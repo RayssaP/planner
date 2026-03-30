@@ -210,7 +210,7 @@ label.lbl { display: block; font-size: 11px; font-family: var(--font-mono); colo
 body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { background:#0F172A; }
 
 /* GRID */
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
 
 /* MODAL */
@@ -252,6 +252,11 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
 .section-card { background: var(--bg); border-radius: 10px; border: 1px solid var(--bg3); overflow: hidden; }
 .section-head { padding: 10px 14px; border-bottom: 1px solid var(--bg3); font-weight: 600; font-size: 12px; color: var(--text2); font-family: var(--font-mono); letter-spacing: 0.03em; }
 .section-body { padding: 12px 14px; }
+
+/* EXPORT PDF */
+.export-assignees-list { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:8px; }
+.export-person-option { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--bg3); border-radius:10px; background:var(--bg2); font-size:13px; color:var(--text2); }
+.export-person-option.empty { grid-column:1/-1; justify-content:center; color:var(--text3); font-style:italic; }
 
 /* KANBAN empty state */
 #board-empty { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: var(--text3); }
@@ -345,9 +350,15 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
     min-width: 0;
     width: 100%;
     max-height: none;
-    min-height: 280px;
+    min-height: 0;
+    height: auto;
+    overflow: hidden;
+    align-self: start;
   }
-  .col-cards { max-height: 52vh; }
+  .col-cards {
+    max-height: none;
+    overflow: hidden;
+  }
 }
 
 /* ─── MOBILE ≤ 640px ─── */
@@ -476,6 +487,7 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
       <span id="od-btn-label">Drive</span>
     </button>
     <button class="btn btn-ghost" id="btn-toggle-filter">🔽 <span class="btn-label">Filtros</span></button>
+    <button class="btn btn-ghost" id="btn-export-pdf">🧾 <span class="btn-label">PDF</span></button>
     <button class="btn btn-ghost" id="btn-settings">⚙️</button>
     <button class="btn btn-primary" id="btn-new">+ Nova</button>
   </div>
@@ -532,6 +544,48 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
 
 <!-- MOVE MENU (floated) -->
 <div class="move-menu" id="move-menu" style="display:none"></div>
+
+<!-- ======= MODAL: EXPORTAR PDF ======= -->
+<div class="modal-overlay hidden" id="modal-export-pdf">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div class="modal-title">🧾 Exportar cards para PDF</div>
+      <button class="modal-close" id="btn-export-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:12px 14px;background:var(--bg);border:1px solid var(--bg3);border-radius:10px;font-size:13px;color:var(--text2);line-height:1.6">
+        Selecione as atribuições desejadas. O PDF será gerado com todos os cards e suas informações, agrupados por atribuição.
+      </div>
+      <div class="section-card">
+        <div class="section-head">FILTRAR POR ATRIBUIÇÃO</div>
+        <div class="section-body">
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;color:var(--text2)">
+            <input type="checkbox" id="export-all-assignees" checked/>
+            <span>Incluir todas as atribuições</span>
+          </label>
+          <div id="export-assignees-list" class="export-assignees-list"></div>
+        </div>
+      </div>
+      <div class="section-card">
+        <div class="section-head">OPÇÕES</div>
+        <div class="section-body" style="display:flex;flex-direction:column;gap:10px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)">
+            <input type="checkbox" id="export-only-filtered"/>
+            <span>Usar também os filtros visíveis da tela</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)">
+            <input type="checkbox" id="export-group-status" checked/>
+            <span>Agrupar cards por status dentro de cada atribuição</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" id="btn-export-cancel">Cancelar</button>
+      <button class="btn btn-primary" id="btn-export-generate">🖨️ Gerar PDF</button>
+    </div>
+  </div>
+</div>
 
 <!-- ======= MODAL: NOVA/EDITAR TAREFA ======= -->
 <div class="modal-overlay hidden" id="modal-task">
@@ -784,6 +838,7 @@ let currentChecklist = [];
 let filterBarVisible = true;
 let autoSyncTimer = null;
 let collapsedKanbans = new Set();
+let compactKanbanInitialized = false;
 
 const LS_DATA     = 'planner-utd-appdata';
 const LS_SETTINGS = 'planner-utd-settings';
@@ -1106,6 +1161,130 @@ function applyFilters(list) {
 }
 
 // ===== RENDER =====
+
+function getUniqueAssigneesFromTasks() {
+  const set = new Set([...(appData.people||[])]);
+  tasks.forEach(t => (t.assignees||[]).forEach(a => a && set.add(a)));
+  return [...set].sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
+}
+
+function openExportModal() {
+  const box = document.getElementById('export-assignees-list');
+  const people = getUniqueAssigneesFromTasks();
+  box.innerHTML = people.length
+    ? people.map(name => `<label class="export-person-option"><input type="checkbox" class="export-assignee-item" value="${escHtml(name)}"/> <span>${escHtml(name)}</span></label>`).join('')
+    : '<div class="export-person-option empty">Nenhuma atribuição cadastrada.</div>';
+  document.getElementById('export-all-assignees').checked = true;
+  box.querySelectorAll('.export-assignee-item').forEach(el => el.disabled = true);
+  document.getElementById('modal-export-pdf').classList.remove('hidden');
+}
+
+function getSelectedExportAssignees() {
+  if (document.getElementById('export-all-assignees').checked) return getUniqueAssigneesFromTasks();
+  return [...document.querySelectorAll('.export-assignee-item:checked')].map(el => el.value);
+}
+
+function formatFlagsText(flags=[]) {
+  return flags.map(f => FLAG_META[f]?.icon?.replace(/<[^>]+>/g,'') || f).join(' · ');
+}
+
+function buildPrintableCards(tasksToUse, selectedAssignees, groupByStatus) {
+  const groups = selectedAssignees.map(name => ({
+    name,
+    tasks: tasksToUse.filter(t => (t.assignees||[]).includes(name))
+  })).filter(g => g.tasks.length);
+
+  const sections = groups.map(group => {
+    if (groupByStatus) {
+      return `
+      <section class="pdf-group">
+        <h1>${escHtml(group.name)}</h1>
+        ${STATUSES.map(status => {
+          const sts = group.tasks.filter(t => t.status === status);
+          if (!sts.length) return '';
+          return `
+            <div class="pdf-status-block">
+              <h2>${escHtml(status)} <span>${sts.length}</span></h2>
+              <div class="pdf-cards">${sts.map(t => printableCardHtml(t)).join('')}</div>
+            </div>`;
+        }).join('')}
+      </section>`;
+    }
+    return `
+    <section class="pdf-group">
+      <h1>${escHtml(group.name)}</h1>
+      <div class="pdf-cards">${group.tasks.map(t => printableCardHtml(t)).join('')}</div>
+    </section>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Planner UTD - Exportação PDF</title>
+  <style>
+    *{box-sizing:border-box} body{font-family: Georgia, serif; margin:24px; color:#1e293b; background:#fff}
+    .pdf-top{margin-bottom:24px; border-bottom:2px solid #e2e8f0; padding-bottom:12px}
+    .pdf-top h1{margin:0 0 6px; font-size:24px}
+    .pdf-top p{margin:2px 0; color:#475569; font-size:12px}
+    .pdf-group{margin:0 0 28px; page-break-inside:avoid}
+    .pdf-group>h1{font-size:20px; margin:0 0 14px; padding:10px 14px; background:#f8fafc; border-left:6px solid #f59e0b}
+    .pdf-status-block{margin:0 0 18px}
+    .pdf-status-block h2{font-size:15px; margin:0 0 10px; color:#334155; border-bottom:1px solid #e2e8f0; padding-bottom:4px}
+    .pdf-status-block h2 span{font-size:12px; color:#64748b}
+    .pdf-cards{display:flex; flex-direction:column; gap:12px}
+    .pdf-card{border:1px solid #cbd5e1; border-radius:12px; padding:14px; page-break-inside:avoid}
+    .pdf-card h3{margin:0 0 8px; font-size:16px}
+    .pdf-line{margin:4px 0; font-size:12px; color:#334155}
+    .pdf-muted{color:#64748b}
+    .pdf-badges{margin:8px 0 0; display:flex; flex-wrap:wrap; gap:6px}
+    .pdf-badge{display:inline-block; font-size:11px; padding:3px 8px; border:1px solid #cbd5e1; border-radius:999px; background:#f8fafc}
+    .pdf-checklist{margin:8px 0 0 18px; padding:0}
+    .pdf-checklist li{margin:3px 0; font-size:12px}
+    .pdf-notes{margin-top:8px; padding:8px 10px; background:#f8fafc; border-radius:8px; font-size:12px}
+    @media print { body{margin:12mm} .pdf-group{break-inside:avoid} .pdf-card{break-inside:avoid} }
+  </style></head><body>
+  <div class="pdf-top">
+    <h1>Planner UTD</h1>
+    <p>Exportação por atribuição</p>
+    <p>Gerado em ${escHtml(new Date().toLocaleString('pt-BR'))}</p>
+  </div>
+  ${sections || '<p>Nenhum card encontrado para os filtros selecionados.</p>'}
+  <script>window.onload=function(){setTimeout(function(){window.print();},250);}<\/script>
+  </body></html>`;
+}
+
+function printableCardHtml(task) {
+  task = normalizeTask(task);
+  const checklist = (task.checklist||[]).length ? `<div class="pdf-line"><strong>Checklist:</strong></div><ul class="pdf-checklist">${task.checklist.map(i => `<li>${i.done ? '☑' : '☐'} ${escHtml(i.text||'')}</li>`).join('')}</ul>` : '';
+  const attachments = (task.attachments||[]).length ? `<div class="pdf-line"><strong>Anexos:</strong> ${task.attachments.map(a => escHtml(a.name||'arquivo')).join(', ')}</div>` : '';
+  const notes = task.notes ? `<div class="pdf-notes"><strong>Observações:</strong><br>${escHtml(task.notes).replace(/
+/g,'<br>')}</div>` : '';
+  return `
+    <article class="pdf-card">
+      <h3>${escHtml(task.title || 'Sem título')}</h3>
+      <div class="pdf-line"><strong>Status:</strong> ${escHtml(task.status || '-')}</div>
+      ${task.description ? `<div class="pdf-line"><strong>Descrição:</strong> ${escHtml(task.description).replace(/
+/g,'<br>')}</div>` : ''}
+      <div class="pdf-line"><strong>Atribuição:</strong> ${escHtml((task.assignees||[]).join(', ') || '-')}</div>
+      <div class="pdf-line"><strong>Categoria:</strong> ${escHtml(task.category || '-')}</div>
+      <div class="pdf-line"><strong>Datas:</strong> início ${escHtml(fmtDate(task.startDate) || '-')} | fim ${escHtml(fmtDate(task.endDate) || '-')}</div>
+      ${(task.flags||[]).length ? `<div class="pdf-line"><strong>Flags:</strong> ${escHtml(formatFlagsText(task.flags))}</div>` : ''}
+      ${checklist}
+      ${attachments}
+      ${notes}
+    </article>`;
+}
+
+function exportTasksToPdf() {
+  const selectedAssignees = getSelectedExportAssignees();
+  if (!selectedAssignees.length) { showToast('Selecione ao menos uma atribuição para exportar.','info'); return; }
+  const tasksToUse = document.getElementById('export-only-filtered').checked ? applyFilters(tasks) : tasks.slice();
+  const html = buildPrintableCards(tasksToUse, selectedAssignees, document.getElementById('export-group-status').checked);
+  const w = window.open('', '_blank');
+  if (!w) { showToast('Seu navegador bloqueou a janela do PDF. Permita pop-ups para este site.','info'); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  document.getElementById('modal-export-pdf').classList.add('hidden');
+}
+
 function renderAll() {
   renderKanban();
   updateTaskCount();
@@ -1131,6 +1310,19 @@ function isCompactKanbanView() {
   return window.innerWidth <= 1024;
 }
 
+
+function syncCompactKanbanState() {
+  const compact = isCompactKanbanView();
+  if (compact && !compactKanbanInitialized) {
+    collapsedKanbans = new Set(STATUSES);
+    compactKanbanInitialized = true;
+  }
+  if (!compact) {
+    compactKanbanInitialized = false;
+    collapsedKanbans.clear();
+  }
+}
+
 function shouldCollapseStatus(status) {
   return isCompactKanbanView() && collapsedKanbans.has(status);
 }
@@ -1143,6 +1335,7 @@ function toggleKanbanStatus(status) {
 }
 
 function renderKanban() {
+  syncCompactKanbanState();
   const board=document.getElementById('kanban');
   const filtered=applyFilters(tasks);
   const showClear=document.getElementById('btn-clear-filters');
@@ -1515,6 +1708,16 @@ document.getElementById('btn-settings').onclick=()=>{
   updateOdUI(); initAutoSyncUI(); renderPeopleList(); renderCategoriesList();
   document.getElementById('modal-settings').classList.remove('hidden');
 };
+document.getElementById('btn-export-pdf').onclick=openExportModal;
+document.getElementById('btn-export-close').onclick=()=>document.getElementById('modal-export-pdf').classList.add('hidden');
+document.getElementById('btn-export-cancel').onclick=()=>document.getElementById('modal-export-pdf').classList.add('hidden');
+document.getElementById('btn-export-generate').onclick=exportTasksToPdf;
+document.getElementById('export-all-assignees').onchange=(e)=>{
+  document.querySelectorAll('.export-assignee-item').forEach(el=>{
+    el.disabled = e.target.checked;
+    if (e.target.checked) el.checked = false;
+  });
+};
 document.getElementById('btn-settings-close').onclick=()=>document.getElementById('modal-settings').classList.add('hidden');
 document.getElementById('btn-settings-close2').onclick=()=>document.getElementById('modal-settings').classList.add('hidden');
 document.getElementById('btn-od-connect').onclick=odConnect;
@@ -1561,14 +1764,14 @@ document.getElementById('btn-toggle-filter').onclick=()=>{
 };
 
 // Close modals on overlay click
-['modal-task','modal-settings','modal-delete'].forEach(id=>{
+['modal-task','modal-settings','modal-delete','modal-export-pdf'].forEach(id=>{
   document.getElementById(id).addEventListener('click',e=>{ if(e.target.id===id) document.getElementById(id).classList.add('hidden'); });
 });
 
 // Keyboard save
 document.addEventListener('keydown',e=>{
   if (!document.getElementById('modal-task').classList.contains('hidden')&&(e.ctrlKey||e.metaKey)&&e.key==='Enter') saveTask();
-  if (e.key==='Escape') { ['modal-task','modal-settings','modal-delete'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
+  if (e.key==='Escape') { ['modal-task','modal-settings','modal-delete','modal-export-pdf'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
 });
 
 // ===== INIT =====
