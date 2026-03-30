@@ -264,25 +264,81 @@ label.lbl { display: block; font-size: 11px; font-family: var(--font-mono); colo
   #header-subtitle { display: none; }
   .filter-bar { padding: 8px 12px; gap: 6px; }
   .filter-inp-wide { min-width: 140px; }
-  .kanban-col { flex: 0 0 260px; min-width: 260px; }
+  #board-wrap { overflow-y: auto; }
+  #kanban {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 12px;
+    overflow-x: hidden;
+    overflow-y: visible;
+    align-items: start;
+  }
+  .kanban-col {
+    flex: initial;
+    min-width: 0;
+    width: 100%;
+    max-height: none;
+    min-height: 280px;
+  }
+  .col-cards { max-height: 46vh; }
 }
 
 /* ─── MOBILE ≤ 640px ─── */
 @media (max-width: 640px) {
-  #header { padding: 0 12px; height: 56px; }
+  body, html { overflow: auto; }
+  #header {
+    padding: 8px 12px;
+    height: auto;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .header-left { width: 100%; }
   .header-title { font-size: 14px; }
+  .header-right {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .header-right > * { min-width: 0; justify-content: center; }
   .header-right .btn-ghost .btn-label { display: none; }
   #task-count { display: none; }
-  .filter-bar { padding: 6px 10px; gap: 5px; }
+  .od-btn, .btn { width: 100%; }
+  .filter-bar {
+    padding: 8px 10px;
+    gap: 8px;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .filter-group { width: 100%; }
+  .filter-group .filter-inp, .filter-group select { width: 100%; }
   .filter-sep { display: none; }
-  .filter-label { display: none; }
+  .filter-label { display: block; min-width: 58px; }
   .filter-inp-wide { min-width: 100%; }
-  .kanban-col { flex: 0 0 280px; min-width: 280px; }
-  #kanban { padding: 10px; gap: 8px; }
+  #board-wrap { overflow-y: auto; }
+  #kanban {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 10px;
+    gap: 10px;
+    overflow: visible;
+  }
+  .kanban-col {
+    flex: initial;
+    min-width: 0;
+    width: 100%;
+    max-height: none;
+  }
+  .col-header { position: sticky; top: 0; background: inherit; z-index: 1; }
+  .col-cards { max-height: none; overflow: visible; }
+  .task-card-title { font-size: 14px; }
   .modal { padding: 18px 16px; }
   .modal-title { font-size: 16px; }
-  .grid2 { grid-template-columns: 1fr; }
+  .grid2, .grid3 { grid-template-columns: 1fr; }
   .flags-grid { grid-template-columns: repeat(2,1fr); }
+  .modal-btns { flex-wrap: wrap; }
+  .modal-btns .btn { flex: 1 1 calc(50% - 8px); justify-content: center; }
   #toast { left: 10px; right: 10px; bottom: 10px; text-align: center; }
 }
 </style>
@@ -461,8 +517,8 @@ label.lbl { display: block; font-size: 11px; font-family: var(--font-mono); colo
             </div>
           </div>
           <div style="font-size:11px;color:var(--text3);padding:8px 10px;background:var(--bg);border-radius:6px;font-family:var(--font-mono);margin-top:8px;line-height:1.7">
-            📁 Dados salvos em:<br>
-            <span style="color:#93c5fd">Google Drive/GestaoReunioes/planner.json</span>
+            📁 Dados do planner salvos em:<br>
+            <span style="color:#93c5fd">Google Drive/PlannerUTD/planner-utd.json</span>
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
             <button class="btn btn-green btn-sm" id="btn-od-sync-now" style="flex:1;justify-content:center;min-width:110px">⬇️ Buscar do Drive</button>
@@ -593,10 +649,10 @@ let activeAssignees = [];
 let filterBarVisible = true;
 let autoSyncTimer = null;
 
-const LS_DATA     = 'planner-appdata';
-const LS_SETTINGS = 'planner-settings';
-const LS_TOKENS   = 'planner-gd-tokens';
-const LS_USERINFO = 'planner-gd-userinfo';
+const LS_DATA     = 'planner-utd-appdata';
+const LS_SETTINGS = 'planner-utd-settings';
+const LS_TOKENS   = 'planner-utd-gd-tokens';
+const LS_USERINFO = 'planner-utd-gd-userinfo';
 
 function loadLocal() {
   try { const d = JSON.parse(localStorage.getItem(LS_DATA) || 'null'); if (d) { tasks = d.tasks || []; appData.people = d.people || []; appData.categories = d.categories || []; } } catch {}
@@ -612,8 +668,8 @@ function saveSettings() {
 loadLocal();
 
 // ===== GOOGLE DRIVE =====
-const GD_FOLDER   = 'GestaoReunioes';
-const GD_FILENAME = 'planner.json';
+const GD_FOLDER   = 'PlannerUTD';
+const GD_FILENAME = 'planner-utd.json';
 const GD_SCOPES   = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 const DRIVE_API    = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
