@@ -282,6 +282,48 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
 /* FILTER ACTIVE INDICATOR */
 .filter-active-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: 2px; }
 
+
+
+/* COLLAPSIBLE KANBAN FOR TABLET/MOBILE */
+.col-header { cursor: default; }
+.col-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  color: var(--text3);
+  font-size: 12px;
+  transition: transform .22s ease, background .18s ease, color .18s ease;
+  flex-shrink: 0;
+}
+.col-header:hover .col-toggle { background: var(--bg3); color: var(--text2); }
+.kanban-col.collapsed .col-toggle { transform: rotate(-90deg); }
+
+@media (max-width: 1024px) {
+  .col-header {
+    cursor: pointer;
+    user-select: none;
+  }
+  .col-toggle { display: inline-flex; }
+  .col-cards {
+    transform-origin: top center;
+    transition: max-height .28s ease, opacity .22s ease, transform .22s ease, padding .22s ease;
+  }
+  .kanban-col.collapsed {
+    min-height: 0;
+  }
+  .kanban-col.collapsed .col-cards {
+    max-height: 0 !important;
+    opacity: 0;
+    transform: scaleY(.96);
+    overflow: hidden;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
 /* ─── TABLET ≤ 1024px ─── */
 @media (max-width: 1024px) {
   .btn-hamburger { display: flex; }
@@ -305,7 +347,7 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
     max-height: none;
     min-height: 280px;
   }
-  .col-cards { max-height: 46vh; }
+  .col-cards { max-height: 52vh; }
 }
 
 /* ─── MOBILE ≤ 640px ─── */
@@ -741,6 +783,7 @@ let currentAttachments = [];
 let currentChecklist = [];
 let filterBarVisible = true;
 let autoSyncTimer = null;
+let collapsedKanbans = new Set();
 
 const LS_DATA     = 'planner-utd-appdata';
 const LS_SETTINGS = 'planner-utd-settings';
@@ -1083,6 +1126,22 @@ function updateFilterSelects() {
   catSel.innerHTML='<option value="">Todas</option>'+allCats.map(c=>`<option value="${escHtml(c)}"${c===prevC?' selected':''}>${escHtml(c)}</option>`).join('');
 }
 
+
+function isCompactKanbanView() {
+  return window.innerWidth <= 1024;
+}
+
+function shouldCollapseStatus(status) {
+  return isCompactKanbanView() && collapsedKanbans.has(status);
+}
+
+function toggleKanbanStatus(status) {
+  if (!isCompactKanbanView()) return;
+  if (collapsedKanbans.has(status)) collapsedKanbans.delete(status);
+  else collapsedKanbans.add(status);
+  renderKanban();
+}
+
 function renderKanban() {
   const board=document.getElementById('kanban');
   const filtered=applyFilters(tasks);
@@ -1092,13 +1151,15 @@ function renderKanban() {
   board.innerHTML=STATUSES.map(status=>{
     const colTasks=filtered.filter(t=>t.status===status);
     const overdueCount=colTasks.filter(t=>isOverdue(t.endDate)&&status!=='Concluídas'&&status!=='Canceladas').length;
+    const collapsed = shouldCollapseStatus(status);
     return `
-    <div class="kanban-col" data-status="${escHtml(status)}">
-      <div class="col-header" style="border-top:3px solid ${STATUS_COLORS[status]}">
+    <div class="kanban-col${collapsed?' collapsed':''}" data-status="${escHtml(status)}">
+      <div class="col-header" data-toggle-status="${escHtml(status)}" style="border-top:3px solid ${STATUS_COLORS[status]}">
         <span class="col-dot" style="background:${STATUS_COLORS[status]}"></span>
         <span class="col-title" style="color:${STATUS_COLORS[status]}">${STATUS_ICONS[status]} ${escHtml(status)}</span>
         <span class="col-count">${colTasks.length}</span>
         ${overdueCount>0?`<span class="col-overdue">⚠️${overdueCount}</span>`:''}
+        <span class="col-toggle" aria-hidden="true">▾</span>
         <button class="col-add" data-add="${escHtml(status)}" title="Adicionar tarefa nesta coluna">+</button>
       </div>
       <div class="col-cards" id="col-${status.replace(/\s+/g,'_')}">
@@ -1107,6 +1168,12 @@ function renderKanban() {
     </div>`;
   }).join('');
 
+  board.querySelectorAll('[data-toggle-status]').forEach(header=>{
+    header.addEventListener('click',e=>{
+      if (e.target.closest('[data-add]')) return;
+      toggleKanbanStatus(header.dataset.toggleStatus);
+    });
+  });
   board.querySelectorAll('[data-add]').forEach(btn=>{
     btn.addEventListener('click',e=>{ e.stopPropagation(); openTaskModal(null,btn.dataset.add); });
   });
