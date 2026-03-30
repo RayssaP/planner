@@ -1254,14 +1254,12 @@ function printableCardHtml(task) {
   task = normalizeTask(task);
   const checklist = (task.checklist||[]).length ? `<div class="pdf-line"><strong>Checklist:</strong></div><ul class="pdf-checklist">${task.checklist.map(i => `<li>${i.done ? '☑' : '☐'} ${escHtml(i.text||'')}</li>`).join('')}</ul>` : '';
   const attachments = (task.attachments||[]).length ? `<div class="pdf-line"><strong>Anexos:</strong> ${task.attachments.map(a => escHtml(a.name||'arquivo')).join(', ')}</div>` : '';
-  const notes = task.notes ? `<div class="pdf-notes"><strong>Observações:</strong><br>${escHtml(task.notes).replace(/
-/g,'<br>')}</div>` : '';
+  const notes = task.notes ? `<div class="pdf-notes"><strong>Observações:</strong><br>${escHtml(task.notes).replace(/\n/g,'<br>')}</div>` : '';
   return `
     <article class="pdf-card">
       <h3>${escHtml(task.title || 'Sem título')}</h3>
       <div class="pdf-line"><strong>Status:</strong> ${escHtml(task.status || '-')}</div>
-      ${task.description ? `<div class="pdf-line"><strong>Descrição:</strong> ${escHtml(task.description).replace(/
-/g,'<br>')}</div>` : ''}
+      ${task.description ? `<div class="pdf-line"><strong>Descrição:</strong> ${escHtml(task.description).replace(/\n/g,'<br>')}</div>` : ''}
       <div class="pdf-line"><strong>Atribuição:</strong> ${escHtml((task.assignees||[]).join(', ') || '-')}</div>
       <div class="pdf-line"><strong>Categoria:</strong> ${escHtml(task.category || '-')}</div>
       <div class="pdf-line"><strong>Datas:</strong> início ${escHtml(fmtDate(task.startDate) || '-')} | fim ${escHtml(fmtDate(task.endDate) || '-')}</div>
