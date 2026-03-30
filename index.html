@@ -567,6 +567,17 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
         </div>
       </div>
       <div class="section-card">
+        <div class="section-head">KANBANS A IMPRIMIR</div>
+        <div class="section-body" id="export-statuses-list" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)"><input type="checkbox" class="export-status-item" value="Backlog"/> <span>Backlog</span></label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)"><input type="checkbox" class="export-status-item" value="A fazer" checked/> <span>A fazer</span></label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)"><input type="checkbox" class="export-status-item" value="Fazendo" checked/> <span>Fazendo</span></label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)"><input type="checkbox" class="export-status-item" value="Aguardando aprovação" checked/> <span>Aguardando aprovação</span></label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)"><input type="checkbox" class="export-status-item" value="Concluídas"/> <span>Concluídas</span></label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)"><input type="checkbox" class="export-status-item" value="Canceladas" checked/> <span>Canceladas</span></label>
+        </div>
+      </div>
+      <div class="section-card">
         <div class="section-head">OPÇÕES</div>
         <div class="section-body" style="display:flex;flex-direction:column;gap:10px">
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)">
@@ -1184,14 +1195,19 @@ function getSelectedExportAssignees() {
   return [...document.querySelectorAll('.export-assignee-item:checked')].map(el => el.value);
 }
 
+function getSelectedExportStatuses() {
+  return [...document.querySelectorAll('.export-status-item:checked')].map(el => el.value);
+}
+
 function formatFlagsText(flags=[]) {
   return flags.map(f => FLAG_META[f]?.icon?.replace(/<[^>]+>/g,'') || f).join(' · ');
 }
 
-function buildPrintableCards(tasksToUse, selectedAssignees, groupByStatus) {
+function buildPrintableCards(tasksToUse, selectedAssignees, selectedStatuses, groupByStatus) {
+  const filteredTasks = tasksToUse.filter(t => selectedStatuses.includes(t.status));
   const groups = selectedAssignees.map(name => ({
     name,
-    tasks: tasksToUse.filter(t => (t.assignees||[]).includes(name))
+    tasks: filteredTasks.filter(t => (t.assignees||[]).includes(name))
   })).filter(g => g.tasks.length);
 
   const sections = groups.map(group => {
@@ -1199,7 +1215,7 @@ function buildPrintableCards(tasksToUse, selectedAssignees, groupByStatus) {
       return `
       <section class="pdf-group">
         <h1>${escHtml(group.name)}</h1>
-        ${STATUSES.map(status => {
+        ${selectedStatuses.map(status => {
           const sts = group.tasks.filter(t => t.status === status);
           if (!sts.length) return '';
           return `
@@ -1223,7 +1239,7 @@ function buildPrintableCards(tasksToUse, selectedAssignees, groupByStatus) {
     .pdf-top{margin-bottom:24px; border-bottom:2px solid #e2e8f0; padding-bottom:12px}
     .pdf-top h1{margin:0 0 6px; font-size:24px}
     .pdf-top p{margin:2px 0; color:#475569; font-size:12px}
-    .pdf-group{margin:0 0 28px; page-break-inside:avoid}
+    .pdf-group{margin:0 0 24px}
     .pdf-group>h1{font-size:20px; margin:0 0 14px; padding:10px 14px; background:#f8fafc; border-left:6px solid #f59e0b}
     .pdf-status-block{margin:0 0 18px}
     .pdf-status-block h2{font-size:15px; margin:0 0 10px; color:#334155; border-bottom:1px solid #e2e8f0; padding-bottom:4px}
@@ -1238,7 +1254,7 @@ function buildPrintableCards(tasksToUse, selectedAssignees, groupByStatus) {
     .pdf-checklist{margin:8px 0 0 18px; padding:0}
     .pdf-checklist li{margin:3px 0; font-size:12px}
     .pdf-notes{margin-top:8px; padding:8px 10px; background:#f8fafc; border-radius:8px; font-size:12px}
-    @media print { body{margin:12mm} .pdf-group{break-inside:avoid} .pdf-card{break-inside:avoid} }
+    @media print { body{margin:10mm} .pdf-status-block{break-inside:auto} .pdf-card{break-inside:avoid} }
   </style></head><body>
   <div class="pdf-top">
     <h1>Planner UTD</h1>
@@ -1272,9 +1288,11 @@ function printableCardHtml(task) {
 
 function exportTasksToPdf() {
   const selectedAssignees = getSelectedExportAssignees();
+  const selectedStatuses = getSelectedExportStatuses();
   if (!selectedAssignees.length) { showToast('Selecione ao menos uma atribuição para exportar.','info'); return; }
+  if (!selectedStatuses.length) { showToast('Selecione ao menos um kanban para imprimir.','info'); return; }
   const tasksToUse = document.getElementById('export-only-filtered').checked ? applyFilters(tasks) : tasks.slice();
-  const html = buildPrintableCards(tasksToUse, selectedAssignees, document.getElementById('export-group-status').checked);
+  const html = buildPrintableCards(tasksToUse, selectedAssignees, selectedStatuses, document.getElementById('export-group-status').checked);
   const w = window.open('', '_blank');
   if (!w) { showToast('Seu navegador bloqueou a janela do PDF. Permita pop-ups para este site.','info'); return; }
   w.document.open();
