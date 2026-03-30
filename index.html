@@ -185,19 +185,43 @@ label.lbl { display: block; font-size: 11px; font-family: var(--font-mono); colo
 .tag-sug-item { padding: 8px 12px; font-size: 13px; cursor: pointer; transition: background 0.1s; }
 .tag-sug-item:hover, .tag-sug-item.selected { background: var(--bg3); }
 
+/* ATTACHMENTS & CHECKLIST */
+.attach-toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.file-picker-btn { display:inline-flex; align-items:center; gap:7px; padding:8px 12px; border:1px solid var(--bg3); border-radius:8px; background:var(--bg); cursor:pointer; font-size:13px; }
+.file-picker-btn:hover { border-color: var(--accent); }
+.file-help { font-size:11px; color:var(--text3); font-family:var(--font-mono); }
+.attach-list, .checklist-list { display:flex; flex-direction:column; gap:8px; }
+.attach-item, .check-item { display:flex; align-items:center; gap:10px; justify-content:space-between; padding:10px 12px; border:1px solid var(--bg3); border-radius:10px; background:var(--bg); }
+.attach-main, .check-main { min-width:0; display:flex; align-items:center; gap:10px; flex:1; }
+.attach-name { font-size:13px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.attach-meta { font-size:11px; color:var(--text3); font-family:var(--font-mono); }
+.attach-actions, .check-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.link-btn { border:none; background:none; color:var(--blue); cursor:pointer; font-size:12px; font-family:var(--font-mono); padding:2px 4px; }
+.link-btn:hover { text-decoration:underline; }
+.check-item.done .check-title { text-decoration:line-through; color:var(--text3); }
+.check-title { font-size:13px; color:var(--text); }
+.check-summary, .attach-summary { font-size:11px; color:var(--text3); font-family:var(--font-mono); display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border:1px solid var(--bg3); border-radius:20px; }
+.card-extra { display:flex; flex-wrap:wrap; gap:6px; }
+.card-attachments { display:flex; flex-wrap:wrap; gap:6px; }
+.card-attach-btn { border:none; background:var(--bg3); color:var(--text2); border-radius:14px; padding:3px 8px; font-size:10px; font-family:var(--font-mono); cursor:pointer; max-width:135px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.card-attach-btn:hover { background: var(--accent); color: #fff; }
+.check-input-row { display:flex; gap:8px; }
+.check-toggle { width:16px; height:16px; cursor:pointer; }
+body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { background:#0F172A; }
+
 /* GRID */
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
 
 /* MODAL */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(4px); padding: 16px; }
 .modal-overlay.hidden { display: none; }
-.modal { background: var(--bg2); border-radius: 14px; padding: 24px 28px; min-width: 400px; max-width: 680px; width: calc(100vw - 32px); border: 1px solid var(--bg3); box-shadow: 0 20px 60px rgba(0,0,0,0.18); max-height: 90vh; display: flex; flex-direction: column; }
+.modal { background: var(--bg2); border-radius: 14px; padding: 24px 28px; min-width: 400px; max-width: 680px; width: min(680px, calc(100vw - 32px)); border: 1px solid var(--bg3); box-shadow: 0 20px 60px rgba(0,0,0,0.18); max-height: calc(100dvh - 32px); display: flex; flex-direction: column; overflow: hidden; }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-shrink: 0; }
 .modal-title { font-weight: 700; font-size: 18px; color: var(--text); }
 .modal-close { background: none; border: none; color: var(--text3); font-size: 22px; line-height: 1; }
-.modal-body { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; flex: 1; }
-.modal-btns { display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; padding-top: 14px; }
+.modal-body { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; overflow-x: hidden; flex: 1; min-height: 0; padding-right: 2px; }
+.modal-btns { display: flex; gap: 10px; justify-content: flex-end; flex-shrink: 0; padding-top: 14px; position: sticky; bottom: 0; background: var(--bg2); }
 .modal-text { color: #475569; }
 
 /* SETTINGS */
@@ -286,14 +310,7 @@ label.lbl { display: block; font-size: 11px; font-family: var(--font-mono); colo
 
 /* ─── MOBILE ≤ 640px ─── */
 @media (max-width: 640px) {
-  body, html { overflow: auto; }
-  #header {
-    padding: 8px 12px;
-    height: auto;
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-  .header-left { width: 100%; }
+  #header { padding: 0 12px; height: 56px; }
   .header-title { font-size: 14px; }
   .header-right {
     width: 100%;
@@ -333,12 +350,24 @@ label.lbl { display: block; font-size: 11px; font-family: var(--font-mono); colo
   .col-header { position: sticky; top: 0; background: inherit; z-index: 1; }
   .col-cards { max-height: none; overflow: visible; }
   .task-card-title { font-size: 14px; }
-  .modal { padding: 18px 16px; }
+  .modal-overlay { align-items: stretch; justify-content: stretch; padding: 0; }
+  .modal {
+    width: 100vw;
+    max-width: none;
+    min-width: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
+    padding: calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));
+  }
+  .modal-header { margin-bottom: 12px; }
   .modal-title { font-size: 16px; }
+  .modal-body { gap: 12px; padding-bottom: 10px; }
   .grid2, .grid3 { grid-template-columns: 1fr; }
-  .flags-grid { grid-template-columns: repeat(2,1fr); }
-  .modal-btns { flex-wrap: wrap; }
-  .modal-btns .btn { flex: 1 1 calc(50% - 8px); justify-content: center; }
+  .flags-grid { grid-template-columns: 1fr; }
+  .modal-btns { flex-wrap: wrap; gap: 8px; padding-top: 10px; padding-bottom: env(safe-area-inset-bottom); }
+  .modal-btns .btn { flex: 1 1 100%; justify-content: center; }
   #toast { left: 10px; right: 10px; bottom: 10px; text-align: center; }
 }
 </style>
@@ -480,6 +509,23 @@ label.lbl { display: block; font-size: 11px; font-family: var(--font-mono); colo
           <label class="flag-toggle" data-flag="revisao"><input type="checkbox" id="f-revisao"/> <span>👁️</span> <span class="flag-toggle-label">Revisão</span></label>
           <label class="flag-toggle" data-flag="destaque"><input type="checkbox" id="f-destaque"/> <span>⭐</span> <span class="flag-toggle-label">Destaque</span></label>
         </div>
+      </div>
+      <div>
+        <label class="lbl">Checklist da tarefa</label>
+        <div class="check-input-row" style="margin-bottom:8px">
+          <input class="inp" id="t-check-item" placeholder="Adicionar etapa ou subtarefa…"/>
+          <button class="btn btn-ghost btn-sm" type="button" id="btn-add-check-item">+ Etapa</button>
+        </div>
+        <div id="t-checklist" class="checklist-list"></div>
+      </div>
+      <div>
+        <label class="lbl">Arquivos anexos</label>
+        <div class="attach-toolbar" style="margin-bottom:8px">
+          <label class="file-picker-btn" for="t-attachments-input">📎 Adicionar arquivo</label>
+          <input type="file" id="t-attachments-input" multiple style="display:none"/>
+          <span class="file-help">Arquivos leves funcionam melhor no navegador e na sincronização.</span>
+        </div>
+        <div id="t-attachments-list" class="attach-list"></div>
       </div>
       <div>
         <label class="lbl">Observações</label>
@@ -646,6 +692,8 @@ let appData = { people: [], categories: [] };
 let editingTaskId = null;
 let deleteTargetId = null;
 let activeAssignees = [];
+let currentAttachments = [];
+let currentChecklist = [];
 let filterBarVisible = true;
 let autoSyncTimer = null;
 
@@ -655,7 +703,7 @@ const LS_TOKENS   = 'planner-utd-gd-tokens';
 const LS_USERINFO = 'planner-utd-gd-userinfo';
 
 function loadLocal() {
-  try { const d = JSON.parse(localStorage.getItem(LS_DATA) || 'null'); if (d) { tasks = d.tasks || []; appData.people = d.people || []; appData.categories = d.categories || []; } } catch {}
+  try { const d = JSON.parse(localStorage.getItem(LS_DATA) || 'null'); if (d) { tasks = (d.tasks || []).map(normalizeTask); appData.people = d.people || []; appData.categories = d.categories || []; } } catch {}
   try { settings = JSON.parse(localStorage.getItem(LS_SETTINGS) || '{}'); } catch { settings = {}; }
 }
 function saveLocal() {
@@ -666,6 +714,7 @@ function saveSettings() {
 }
 
 loadLocal();
+tasks = tasks.map(normalizeTask);
 
 // ===== GOOGLE DRIVE =====
 const GD_FOLDER   = 'PlannerUTD';
@@ -788,7 +837,7 @@ async function odLoadAll() {
     const r = await gfetch(`${DRIVE_API}/files/${fileId}?alt=media`);
     if (!r.ok) throw new Error('Não foi possível baixar dados do Drive.');
     const data = await r.json();
-    tasks = Array.isArray(data) ? data : (data.tasks || []);
+    tasks = (Array.isArray(data) ? data : (data.tasks || [])).map(normalizeTask);
     if (data.people)     appData.people     = data.people;
     if (data.categories) appData.categories = data.categories;
     saveLocal();
@@ -915,6 +964,21 @@ function fmtDateTime(iso) {
   if (!iso) return '—';
   return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 }
+function fmtBytes(bytes=0) {
+  const n=Number(bytes)||0;
+  if (n < 1024) return n + ' B';
+  if (n < 1024*1024) return (n/1024).toFixed(1).replace('.0','') + ' KB';
+  return (n/(1024*1024)).toFixed(1).replace('.0','') + ' MB';
+}
+function normalizeTask(t={}) {
+  return {
+    ...t,
+    assignees: Array.isArray(t.assignees) ? t.assignees : [],
+    flags: Array.isArray(t.flags) ? t.flags : [],
+    attachments: Array.isArray(t.attachments) ? t.attachments : [],
+    checklist: Array.isArray(t.checklist) ? t.checklist : []
+  };
+}
 function showToast(msg,type='success') {
   const t=document.getElementById('toast'); t.textContent=msg; t.className=type; t.style.display='block';
   setTimeout(()=>{t.style.display='none';},3200);
@@ -1007,9 +1071,16 @@ function renderKanban() {
   board.querySelectorAll('[data-move-id]').forEach(btn=>{
     btn.addEventListener('click',e=>{ e.stopPropagation(); showMoveMenu(btn, btn.dataset.moveId); });
   });
+  board.querySelectorAll('[data-download-task]').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      downloadTaskAttachment(btn.dataset.downloadTask, Number(btn.dataset.downloadIndex));
+    });
+  });
 }
 
 function renderCard(t) {
+  t=normalizeTask(t);
   const flags=(t.flags||[]).map(f=>FLAG_META[f]?`<span class="flag-chip ${FLAG_META[f].cls}">${FLAG_META[f].icon}</span>`:'').join('');
   const assignees=(t.assignees||[]).slice(0,2).map(a=>`<span class="assignee-chip">${escHtml(a)}</span>`).join('');
   const moreAssignees=(t.assignees||[]).length>2?`<span class="assignee-chip">+${(t.assignees||[]).length-2}</span>`:'';
@@ -1017,10 +1088,19 @@ function renderCard(t) {
   const endOverdue=isOverdue(t.endDate)&&t.status!=='Concluídas'&&t.status!=='Canceladas';
   const endSoon=!endOverdue&&isSoon(t.endDate)&&t.status!=='Concluídas'&&t.status!=='Canceladas';
   const dateStr=t.endDate?`<span class="date-chip${endOverdue?' overdue':endSoon?' soon':''}">📅 ${fmtDate(t.endDate)}</span>`:'';
+  const checklistDone=(t.checklist||[]).filter(i=>i.done).length;
+  const checklistTotal=(t.checklist||[]).length;
+  const checklistChip=checklistTotal?`<span class="check-summary">☑️ ${checklistDone}/${checklistTotal} etapas</span>`:'';
+  const attachCount=(t.attachments||[]).length;
+  const attachChip=attachCount?`<span class="attach-summary">📎 ${attachCount} anexo${attachCount>1?'s':''}</span>`:'';
+  const attachButtons=(t.attachments||[]).slice(0,2).map((a,idx)=>`<button class="card-attach-btn" data-download-task="${t.id}" data-download-index="${idx}" title="Baixar ${escHtml(a.name||'arquivo')}">⬇ ${escHtml(a.name||'arquivo')}</button>`).join('');
+  const moreAttach=attachCount>2?`<span class="attach-summary">+${attachCount-2}</span>`:'';
   return `<div class="task-card" data-task-id="${t.id}">
     <div class="task-card-title">${escHtml(t.title||'Sem título')}</div>
     ${t.description?`<div class="task-card-desc">${escHtml(t.description)}</div>`:''}
     <div class="task-card-meta">${flags}${catChip}</div>
+    ${(checklistChip||attachChip)?`<div class="card-extra">${checklistChip}${attachChip}</div>`:''}
+    ${attachButtons?`<div class="card-attachments">${attachButtons}${moreAttach}</div>`:''}
     <div class="task-card-footer">
       <div style="display:flex;gap:4px;flex-wrap:wrap">${assignees}${moreAssignees}</div>
       <div style="display:flex;align-items:center;gap:5px">
@@ -1064,9 +1144,86 @@ async function moveTask(taskId,newStatus) {
 }
 
 // ===== TASK MODAL =====
+function renderChecklistEditor() {
+  const list=document.getElementById('t-checklist');
+  if (!list) return;
+  if (!currentChecklist.length) { list.innerHTML='<div class="col-empty" style="padding:12px 10px">Nenhuma etapa adicionada.</div>'; return; }
+  list.innerHTML=currentChecklist.map((item,idx)=>`<div class="check-item${item.done?' done':''}">
+    <div class="check-main">
+      <input class="check-toggle" type="checkbox" ${item.done?'checked':''} data-check-toggle="${idx}"/>
+      <span class="check-title">${escHtml(item.text||'')}</span>
+    </div>
+    <div class="check-actions">
+      <button class="btn-icon" type="button" title="Remover etapa" data-check-remove="${idx}">🗑️</button>
+    </div>
+  </div>`).join('');
+  list.querySelectorAll('[data-check-toggle]').forEach(el=>el.onchange=()=>{ const i=Number(el.dataset.checkToggle); if(currentChecklist[i]) currentChecklist[i].done=!!el.checked; renderChecklistEditor(); });
+  list.querySelectorAll('[data-check-remove]').forEach(el=>el.onclick=()=>{ currentChecklist.splice(Number(el.dataset.checkRemove),1); renderChecklistEditor(); });
+}
+function addChecklistItem() {
+  const inp=document.getElementById('t-check-item');
+  const v=(inp.value||'').trim();
+  if (!v) return;
+  currentChecklist.push({ id: genId(), text: v, done: false });
+  inp.value='';
+  renderChecklistEditor();
+}
+function renderAttachmentEditor() {
+  const list=document.getElementById('t-attachments-list');
+  if (!list) return;
+  if (!currentAttachments.length) { list.innerHTML='<div class="col-empty" style="padding:12px 10px">Nenhum arquivo anexado.</div>'; return; }
+  list.innerHTML=currentAttachments.map((file,idx)=>`<div class="attach-item">
+    <div class="attach-main">
+      <div style="font-size:18px">📎</div>
+      <div style="min-width:0">
+        <div class="attach-name">${escHtml(file.name||'arquivo')}</div>
+        <div class="attach-meta">${escHtml(file.type||'arquivo')} · ${fmtBytes(file.size||0)}</div>
+      </div>
+    </div>
+    <div class="attach-actions">
+      <button class="link-btn" type="button" data-attach-download="${idx}">baixar</button>
+      <button class="btn-icon" type="button" title="Remover anexo" data-attach-remove="${idx}">🗑️</button>
+    </div>
+  </div>`).join('');
+  list.querySelectorAll('[data-attach-remove]').forEach(el=>el.onclick=()=>{ currentAttachments.splice(Number(el.dataset.attachRemove),1); renderAttachmentEditor(); });
+  list.querySelectorAll('[data-attach-download]').forEach(el=>el.onclick=()=>downloadAttachment(currentAttachments[Number(el.dataset.attachDownload)]));
+}
+function downloadAttachment(file) {
+  if (!file?.data) return;
+  const a=document.createElement('a');
+  a.href=file.data;
+  a.download=file.name||'arquivo';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+function downloadTaskAttachment(taskId, attachmentIndex) {
+  const task=tasks.find(t=>t.id===taskId);
+  const file=task?.attachments?.[attachmentIndex];
+  if (file) downloadAttachment(file);
+}
+async function handleAttachmentInput(files) {
+  const maxSize=4*1024*1024;
+  for (const file of [...files]) {
+    if (file.size > maxSize) { showToast(`O arquivo ${file.name} excede 4 MB.`, 'info'); continue; }
+    const data=await new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=()=>resolve(reader.result);
+      reader.onerror=()=>reject(new Error('Falha ao ler arquivo'));
+      reader.readAsDataURL(file);
+    }).catch(()=>null);
+    if (!data) continue;
+    currentAttachments.push({ id: genId(), name: file.name, type: file.type || 'arquivo', size: file.size, data });
+  }
+  renderAttachmentEditor();
+  document.getElementById('t-attachments-input').value='';
+}
+
 function openTaskModal(taskId=null, defaultStatus='Backlog') {
   editingTaskId=taskId;
   activeAssignees=[];
+  currentAttachments=[];
+  currentChecklist=[];
   const modal=document.getElementById('modal-task');
   const title=document.getElementById('modal-task-title');
   const delBtn=document.getElementById('btn-task-delete');
@@ -1086,6 +1243,8 @@ function openTaskModal(taskId=null, defaultStatus='Backlog') {
     document.getElementById('t-start').value=t.startDate||'';
     document.getElementById('t-end').value=t.endDate||'';
     document.getElementById('t-notes').value=t.notes||'';
+    currentAttachments=[...((t.attachments||[]).map(a=>({...a})))];
+    currentChecklist=[...((t.checklist||[]).map(i=>({...i})))];
     (t.assignees||[]).forEach(a=>addAssigneeTag(a));
     (t.flags||[]).forEach(f=>{ const el=document.querySelector(`.flag-toggle[data-flag="${f}"]`); if(el){el.querySelector('input').checked=true;el.classList.add('active');} });
   } else {
@@ -1098,7 +1257,12 @@ function openTaskModal(taskId=null, defaultStatus='Backlog') {
     document.getElementById('t-start').value='';
     document.getElementById('t-end').value='';
     document.getElementById('t-notes').value='';
+    currentAttachments=[];
+    currentChecklist=[];
   }
+  document.getElementById('t-check-item').value='';
+  renderAttachmentEditor();
+  renderChecklistEditor();
   modal.classList.remove('hidden');
   setTimeout(()=>document.getElementById('t-title').focus(),80);
 }
@@ -1107,6 +1271,8 @@ function clearAssigneeTags() {
   const wrap=document.getElementById('assignee-wrap');
   wrap.querySelectorAll('.tag-pill').forEach(p=>p.remove());
   activeAssignees=[];
+  currentAttachments=[];
+  currentChecklist=[];
 }
 function addAssigneeTag(name) {
   if (!name||activeAssignees.includes(name)) return;
@@ -1129,9 +1295,9 @@ async function saveTask() {
 
   if (editingTaskId) {
     const t=tasks.find(t=>t.id===editingTaskId);
-    if (t) { Object.assign(t,{ title:titleVal, description:document.getElementById('t-desc').value, status:document.getElementById('t-status').value, category:categoryVal, startDate:document.getElementById('t-start').value, endDate:document.getElementById('t-end').value, assignees:[...activeAssignees], flags, notes:document.getElementById('t-notes').value, updatedAt:new Date().toISOString() }); }
+    if (t) { Object.assign(t,{ title:titleVal, description:document.getElementById('t-desc').value, status:document.getElementById('t-status').value, category:categoryVal, startDate:document.getElementById('t-start').value, endDate:document.getElementById('t-end').value, assignees:[...activeAssignees], flags, checklist:[...currentChecklist], attachments:[...currentAttachments], notes:document.getElementById('t-notes').value, updatedAt:new Date().toISOString() }); }
   } else {
-    tasks.unshift({ id:genId(), title:titleVal, description:document.getElementById('t-desc').value, status:document.getElementById('t-status').value, category:categoryVal, startDate:document.getElementById('t-start').value, endDate:document.getElementById('t-end').value, assignees:[...activeAssignees], flags, notes:document.getElementById('t-notes').value, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() });
+    tasks.unshift(normalizeTask({ id:genId(), title:titleVal, description:document.getElementById('t-desc').value, status:document.getElementById('t-status').value, category:categoryVal, startDate:document.getElementById('t-start').value, endDate:document.getElementById('t-end').value, assignees:[...activeAssignees], flags, checklist:[...currentChecklist], attachments:[...currentAttachments], notes:document.getElementById('t-notes').value, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() }));
   }
   saveLocal(); renderAll();
   document.getElementById('modal-task').classList.add('hidden');
@@ -1225,6 +1391,9 @@ document.getElementById('btn-new').onclick=()=>openTaskModal();
 document.getElementById('btn-task-close').onclick=()=>document.getElementById('modal-task').classList.add('hidden');
 document.getElementById('btn-task-cancel').onclick=()=>document.getElementById('modal-task').classList.add('hidden');
 document.getElementById('btn-task-save').onclick=saveTask;
+document.getElementById('btn-add-check-item').onclick=addChecklistItem;
+document.getElementById('t-check-item').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addChecklistItem(); } });
+document.getElementById('t-attachments-input').addEventListener('change',e=>{ if(e.target.files?.length) handleAttachmentInput(e.target.files); });
 document.getElementById('btn-task-delete').onclick=deleteTask;
 document.getElementById('btn-delete-close').onclick=()=>document.getElementById('modal-delete').classList.add('hidden');
 document.getElementById('btn-delete-cancel').onclick=()=>document.getElementById('modal-delete').classList.add('hidden');
