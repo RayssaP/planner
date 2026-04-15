@@ -147,6 +147,11 @@ button { cursor: pointer; }
 .date-chip { font-size: 10px; font-family: var(--font-mono); color: var(--text3); display: flex; align-items: center; gap: 3px; }
 .date-chip.overdue { color: #EF4444; }
 .date-chip.soon { color: #F59E0B; }
+.date-chip.deadline-alert { font-weight: 700; }
+.alert-row { display:flex; gap:12px; align-items:flex-end; }
+.alert-toggle-box { display:flex; align-items:center; gap:8px; min-height:42px; padding:0 12px; background:#F8FAFC; border:1px solid var(--bg3); border-radius:8px; }
+.alert-toggle-box input { width:16px; height:16px; }
+body.dark .alert-toggle-box { background:#0F172A !important; }
 .assignee-chip { font-size: 10px; font-family: var(--font-mono); background: var(--bg3); color: var(--text2); border-radius: 20px; padding: 1px 7px; white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
 .flag-chip { font-size: 10px; padding: 1px 7px; border-radius: 20px; font-family: var(--font-mono); white-space: nowrap; }
 .cat-chip { font-size: 10px; padding: 1px 8px; border-radius: 20px; background: #EFF6FF; color: #1D4ED8; font-family: var(--font-mono); border: 1px solid #BFDBFE; white-space: nowrap; max-width: 100px; overflow: hidden; text-overflow: ellipsis; }
@@ -642,6 +647,30 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
           <input class="inp" type="date" id="t-end"/>
         </div>
       </div>
+      <div class="grid2">
+        <div>
+          <label class="lbl">Hora limite</label>
+          <input class="inp" type="time" id="t-end-time"/>
+        </div>
+        <div>
+          <label class="lbl">Lembrete</label>
+          <select class="inp" id="t-alert-offset">
+            <option value="0">No horário</option>
+            <option value="15">15 minutos antes</option>
+            <option value="30">30 minutos antes</option>
+            <option value="60" selected>1 hora antes</option>
+            <option value="180">3 horas antes</option>
+            <option value="1440">1 dia antes</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="lbl">Alerta</label>
+        <label class="alert-toggle-box">
+          <input type="checkbox" id="t-alert-enabled" checked/>
+          <span style="font-size:13px;color:var(--text2)">Avisar quando a tarefa estiver perto do prazo ou vencer</span>
+        </label>
+      </div>
       <div>
         <label class="lbl">Atribuição <span style="color:var(--text3);font-size:10px;font-family:var(--font-mono)">(selecione ou crie um nome)</span></label>
         <div style="position:relative">
@@ -1124,9 +1153,19 @@ function fmtBytes(bytes=0) {
   if (n < 1024*1024) return (n/1024).toFixed(1).replace('.0','') + ' KB';
   return (n/(1024*1024)).toFixed(1).replace('.0','') + ' MB';
 }
+function fmtTime(value) {
+  if (!value) return '';
+  if (/^\d{2}:\d{2}$/.test(value)) return value;
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return '';
+  return dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
 function normalizeTask(t={}) {
   return {
     ...t,
+    endTime: t.endTime || '',
+    alertEnabled: t.alertEnabled !== false,
+    alertOffset: Number.isFinite(Number(t.alertOffset)) ? Number(t.alertOffset) : 60,
     assignees: Array.isArray(t.assignees) ? t.assignees : [],
     flags: Array.isArray(t.flags) ? t.flags : [],
     attachments: Array.isArray(t.attachments) ? t.attachments : [],
@@ -1137,11 +1176,64 @@ function showToast(msg,type='success') {
   const t=document.getElementById('toast'); t.textContent=msg; t.className=type; t.style.display='block';
   setTimeout(()=>{t.style.display='none';},3200);
 }
-function isOverdue(dateStr) { if (!dateStr) return false; const[y,m,d]=dateStr.split('-').map(Number); return new Date(y,m-1,d) < new Date(new Date().setHours(0,0,0,0)); }
+function getTaskDeadline(task) {
+  if (!task || !task.endDate) return null;
+  const [y,m,d] = String(task.endDate).split('-').map(Number);
+  if (![y,m,d].every(Number.isFinite)) return null;
+  let hh = 23, mm = 59;
+  if (task.endTime && /^\d{2}:\d{2}$/.test(task.endTime)) {
+    const [h, min] = task.endTime.split(':').map(Number);
+    if (Number.isFinite(h) && Number.isFinite(min)) { hh = h; mm = min; }
+  }
+  return new Date(y, m - 1, d, hh, mm, 0, 0);
+}
+function formatRemaining(ms) {
+  const totalMinutes = Math.max(0, Math.ceil(ms / 60000));
+  if (totalMinutes <= 1) return 'agora';
+  if (totalMinutes < 60) return `${totalMinutes} min`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours < 24) return minutes ? `${hours}h ${minutes}min` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return remHours ? `${days}d ${remHours}h` : `${days}d`;
+}
+function getDeadlineInfo(task) {
+  const deadline = getTaskDeadline(task);
+  const isClosed = ['Concluídas','Canceladas'].includes(task?.status);
+  if (!deadline) return { hasDeadline:false, deadline:null, isClosed, isOverdue:false, isSoon:false, diffMs:null, dateLabel:'', alertLabel:'', chipClass:'' };
+  const diffMs = deadline.getTime() - Date.now();
+  const isOverdue = !isClosed && diffMs < 0;
+  const isSoon = !isClosed && diffMs >= 0 && diffMs <= 24 * 60 * 60 * 1000;
+  const dateLabel = task.endTime ? `📅 ${fmtDate(task.endDate)} • ${fmtTime(task.endTime)}` : `📅 ${fmtDate(task.endDate)}`;
+  let alertLabel = '';
+  let chipClass = '';
+  if (!isClosed) {
+    if (isOverdue) {
+      alertLabel = task.endTime ? `🔴 Atrasada desde ${fmtTime(task.endTime)}` : '🔴 Atrasada';
+      chipClass = ' overdue deadline-alert';
+    } else if (diffMs <= 60 * 60 * 1000) {
+      alertLabel = `⏰ Vence em ${formatRemaining(diffMs)}`;
+      chipClass = ' soon deadline-alert';
+    } else if (isSoon) {
+      alertLabel = `⏳ Falta ${formatRemaining(diffMs)}`;
+      chipClass = ' soon';
+    }
+  }
+  return { hasDeadline:true, deadline, isClosed, isOverdue, isSoon, diffMs, dateLabel, alertLabel, chipClass };
+}
+function isOverdue(dateStr) {
+  if (!dateStr) return false;
+  const [y,m,d] = String(dateStr).split('-').map(Number);
+  return new Date(y,m-1,d) < new Date(new Date().setHours(0,0,0,0));
+}
 function isSoon(dateStr) {
   if (!dateStr) return false;
-  const[y,m,d]=dateStr.split('-').map(Number); const end=new Date(y,m-1,d); const now=new Date(new Date().setHours(0,0,0,0));
-  const diff=(end-now)/(1000*60*60*24); return diff>=0&&diff<=3;
+  const [y,m,d] = String(dateStr).split('-').map(Number);
+  const end = new Date(y,m-1,d);
+  const now = new Date(new Date().setHours(0,0,0,0));
+  const diff=(end-now)/(1000*60*60*24);
+  return diff>=0&&diff<=3;
 }
 
 const FLAG_META = {
@@ -1278,7 +1370,7 @@ function printableCardHtml(task) {
       ${task.description ? `<div class="pdf-line"><strong>Descrição:</strong> ${escHtml(task.description).replace(/\n/g,'<br>')}</div>` : ''}
       <div class="pdf-line"><strong>Atribuição:</strong> ${escHtml((task.assignees||[]).join(', ') || '-')}</div>
       <div class="pdf-line"><strong>Categoria:</strong> ${escHtml(task.category || '-')}</div>
-      <div class="pdf-line"><strong>Datas:</strong> início ${escHtml(fmtDate(task.startDate) || '-')} | fim ${escHtml(fmtDate(task.endDate) || '-')}</div>
+      <div class="pdf-line"><strong>Datas:</strong> início ${escHtml(fmtDate(task.startDate) || '-')} | fim ${escHtml(fmtDate(task.endDate) || '-')} ${task.endTime ? 'às ' + escHtml(fmtTime(task.endTime)) : ''}</div>
       ${(task.flags||[]).length ? `<div class="pdf-line"><strong>Flags:</strong> ${escHtml(formatFlagsText(task.flags))}</div>` : ''}
       ${checklist}
       ${attachments}
@@ -1359,7 +1451,7 @@ function renderKanban() {
 
   board.innerHTML=STATUSES.map(status=>{
     const colTasks=filtered.filter(t=>t.status===status);
-    const overdueCount=colTasks.filter(t=>isOverdue(t.endDate)&&status!=='Concluídas'&&status!=='Canceladas').length;
+    const overdueCount=colTasks.filter(t=>getDeadlineInfo(t).isOverdue&&status!=='Concluídas'&&status!=='Canceladas').length;
     const collapsed = shouldCollapseStatus(status);
     return `
     <div class="kanban-col${collapsed?' collapsed':''}" data-status="${escHtml(status)}">
@@ -1406,9 +1498,9 @@ function renderCard(t) {
   const assignees=(t.assignees||[]).slice(0,2).map(a=>`<span class="assignee-chip">${escHtml(a)}</span>`).join('');
   const moreAssignees=(t.assignees||[]).length>2?`<span class="assignee-chip">+${(t.assignees||[]).length-2}</span>`:'';
   const catChip=t.category?`<span class="cat-chip">${escHtml(t.category)}</span>`:'';
-  const endOverdue=isOverdue(t.endDate)&&t.status!=='Concluídas'&&t.status!=='Canceladas';
-  const endSoon=!endOverdue&&isSoon(t.endDate)&&t.status!=='Concluídas'&&t.status!=='Canceladas';
-  const dateStr=t.endDate?`<span class="date-chip${endOverdue?' overdue':endSoon?' soon':''}">📅 ${fmtDate(t.endDate)}</span>`:'';
+  const deadlineInfo=getDeadlineInfo(t);
+  const dateStr=deadlineInfo.hasDeadline?`<span class="date-chip${deadlineInfo.chipClass}">${deadlineInfo.dateLabel}</span>`:'';
+  const alertDateStr=deadlineInfo.alertLabel?`<span class="date-chip${deadlineInfo.chipClass}">${deadlineInfo.alertLabel}</span>`:'';
   const checklistDone=(t.checklist||[]).filter(i=>i.done).length;
   const checklistTotal=(t.checklist||[]).length;
   const checklistChip=checklistTotal?`<span class="check-summary">☑️ ${checklistDone}/${checklistTotal} etapas</span>`:'';
@@ -1425,7 +1517,7 @@ function renderCard(t) {
     <div class="task-card-footer">
       <div style="display:flex;gap:4px;flex-wrap:wrap">${assignees}${moreAssignees}</div>
       <div style="display:flex;align-items:center;gap:5px">
-        ${dateStr}
+        ${dateStr}${alertDateStr}
         <button class="move-btn" data-move-id="${t.id}" title="Mover para…">⇄</button>
       </div>
     </div>
@@ -1563,6 +1655,9 @@ function openTaskModal(taskId=null, defaultStatus='Backlog') {
     document.getElementById('t-category').value=t.category||'';
     document.getElementById('t-start').value=t.startDate||'';
     document.getElementById('t-end').value=t.endDate||'';
+    document.getElementById('t-end-time').value=t.endTime||'';
+    document.getElementById('t-alert-enabled').checked=t.alertEnabled!==false;
+    document.getElementById('t-alert-offset').value=String(Number.isFinite(Number(t.alertOffset))?Number(t.alertOffset):60);
     document.getElementById('t-notes').value=t.notes||'';
     currentAttachments=[...((t.attachments||[]).map(a=>({...a})))];
     currentChecklist=[...((t.checklist||[]).map(i=>({...i})))];
@@ -1577,6 +1672,9 @@ function openTaskModal(taskId=null, defaultStatus='Backlog') {
     document.getElementById('t-category').value='';
     document.getElementById('t-start').value='';
     document.getElementById('t-end').value='';
+    document.getElementById('t-end-time').value='';
+    document.getElementById('t-alert-enabled').checked=true;
+    document.getElementById('t-alert-offset').value='60';
     document.getElementById('t-notes').value='';
     currentAttachments=[];
     currentChecklist=[];
@@ -1616,11 +1714,12 @@ async function saveTask() {
 
   if (editingTaskId) {
     const t=tasks.find(t=>t.id===editingTaskId);
-    if (t) { Object.assign(t,{ title:titleVal, description:document.getElementById('t-desc').value, status:document.getElementById('t-status').value, category:categoryVal, startDate:document.getElementById('t-start').value, endDate:document.getElementById('t-end').value, assignees:[...activeAssignees], flags, checklist:[...currentChecklist], attachments:[...currentAttachments], notes:document.getElementById('t-notes').value, updatedAt:new Date().toISOString() }); }
+    if (t) { Object.assign(t,{ title:titleVal, description:document.getElementById('t-desc').value, status:document.getElementById('t-status').value, category:categoryVal, startDate:document.getElementById('t-start').value, endDate:document.getElementById('t-end').value, endTime:document.getElementById('t-end-time').value, alertEnabled:document.getElementById('t-alert-enabled').checked, alertOffset:Number(document.getElementById('t-alert-offset').value||60), assignees:[...activeAssignees], flags, checklist:[...currentChecklist], attachments:[...currentAttachments], notes:document.getElementById('t-notes').value, updatedAt:new Date().toISOString() }); }
   } else {
-    tasks.unshift(normalizeTask({ id:genId(), title:titleVal, description:document.getElementById('t-desc').value, status:document.getElementById('t-status').value, category:categoryVal, startDate:document.getElementById('t-start').value, endDate:document.getElementById('t-end').value, assignees:[...activeAssignees], flags, checklist:[...currentChecklist], attachments:[...currentAttachments], notes:document.getElementById('t-notes').value, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() }));
+    tasks.unshift(normalizeTask({ id:genId(), title:titleVal, description:document.getElementById('t-desc').value, status:document.getElementById('t-status').value, category:categoryVal, startDate:document.getElementById('t-start').value, endDate:document.getElementById('t-end').value, endTime:document.getElementById('t-end-time').value, alertEnabled:document.getElementById('t-alert-enabled').checked, alertOffset:Number(document.getElementById('t-alert-offset').value||60), assignees:[...activeAssignees], flags, checklist:[...currentChecklist], attachments:[...currentAttachments], notes:document.getElementById('t-notes').value, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() }));
   }
   saveLocal(); renderAll();
+  checkTaskAlerts();
   document.getElementById('modal-task').classList.add('hidden');
   if (hasValidGoogleToken()||settings.odClientId) {
     setOdStatus('syncing','Salvando…');
@@ -1758,6 +1857,67 @@ document.getElementById('btn-add-category').onclick=()=>{
 };
 document.getElementById('new-category-input').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('btn-add-category').click(); });
 
+function getAlertHistory() {
+  if (!settings.alertHistory || typeof settings.alertHistory !== 'object') settings.alertHistory = {};
+  return settings.alertHistory;
+}
+function rememberAlert(key) {
+  const history = getAlertHistory();
+  history[key] = new Date().toISOString();
+  saveSettings();
+}
+function pushBrowserNotification(title, body) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    try { new Notification(title, { body }); } catch {}
+    return;
+  }
+  if (Notification.permission === 'default') {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        try { new Notification(title, { body }); } catch {}
+      }
+    }).catch(()=>{});
+  }
+}
+function checkTaskAlerts() {
+  const history = getAlertHistory();
+  const now = Date.now();
+  const pending = [];
+  tasks.map(normalizeTask).forEach(task => {
+    const info = getDeadlineInfo(task);
+    if (!task.alertEnabled || !info.hasDeadline || info.isClosed) return;
+    const deadlineIso = info.deadline.toISOString();
+    const diffMin = Math.ceil((info.deadline.getTime() - now) / 60000);
+    const offset = Math.max(0, Number(task.alertOffset || 0));
+    if (diffMin > 0 && diffMin <= offset) {
+      const key = `${task.id}:before:${offset}:${deadlineIso}`;
+      if (!history[key]) {
+        pending.push({ key, message: `⏰ ${task.title} vence ${task.endTime ? 'às ' + fmtTime(task.endTime) : 'hoje'} (${formatRemaining(info.diffMs)}).`, browser: `${task.title} vence em ${formatRemaining(info.diffMs)}.` });
+      }
+    }
+    if (diffMin <= 0 && diffMin >= -30) {
+      const key = `${task.id}:due:${deadlineIso}`;
+      if (!history[key]) {
+        pending.push({ key, message: `🔴 ${task.title} está atrasada${task.endTime ? ' desde ' + fmtTime(task.endTime) : ''}.`, browser: `${task.title} está atrasada.` });
+      }
+    }
+  });
+  if (!pending.length) return;
+  pending.forEach((item, idx) => {
+    rememberAlert(item.key);
+    setTimeout(() => showToast(item.message, item.message.includes('atrasada') ? 'warn' : 'info'), idx * 500);
+  });
+  pushBrowserNotification('Planner UTD', pending[0].browser);
+}
+let taskAlertTimer = null;
+function startTaskAlertsWatcher() {
+  if (taskAlertTimer) clearInterval(taskAlertTimer);
+  checkTaskAlerts();
+  taskAlertTimer = setInterval(checkTaskAlerts, 30000);
+}
+window.addEventListener('focus', checkTaskAlerts);
+
 // FILTERS
 document.getElementById('f-search').addEventListener('input',e=>{ fSearch=e.target.value; renderKanban(); });
 document.getElementById('f-assignee').addEventListener('change',e=>{ fAssignee=e.target.value; renderKanban(); });
@@ -1795,6 +1955,7 @@ applyTheme(settings.theme||'light');
 renderAll();
 restoreOdSession();
 startAutoSync();
+startTaskAlertsWatcher();
 </script>
 </body>
 </html>
