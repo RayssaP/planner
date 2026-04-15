@@ -2090,6 +2090,19 @@ function startTaskAlertsWatcher() {
 }
 window.addEventListener('focus', checkTaskAlerts);
 
+// ALERT ACTION MODAL
+document.getElementById('btn-alert-finish').onclick = () => { if (currentAlertAction?.task?.id) finishTaskFromAlert(currentAlertAction.task.id); };
+document.getElementById('btn-alert-postpone').onclick = () => {
+  if (!currentAlertAction?.task?.id) return;
+  const sel = document.getElementById('alert-postpone-select');
+  postponeTaskFromAlert(currentAlertAction.task.id, Number(sel?.value || 15));
+};
+document.getElementById('btn-alert-dismiss').onclick = () => closeCurrentAlertAction();
+document.getElementById('btn-alert-action-close').onclick = () => closeCurrentAlertAction();
+document.getElementById('alert-action-overlay').addEventListener('click', e => {
+  if (e.target && e.target.id === 'alert-action-overlay') closeCurrentAlertAction();
+});
+
 // FILTERS
 document.getElementById('f-search').addEventListener('input',e=>{ fSearch=e.target.value; renderKanban(); });
 document.getElementById('f-assignee').addEventListener('change',e=>{ fAssignee=e.target.value; renderKanban(); });
@@ -2119,7 +2132,7 @@ document.getElementById('btn-toggle-filter').onclick=()=>{
 // Keyboard save
 document.addEventListener('keydown',e=>{
   if (!document.getElementById('modal-task').classList.contains('hidden')&&(e.ctrlKey||e.metaKey)&&e.key==='Enter') saveTask();
-  if (e.key==='Escape') { ['modal-task','modal-settings','modal-delete','modal-export-pdf'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
+  if (e.key==='Escape') { ['modal-task','modal-settings','modal-delete','modal-export-pdf'].forEach(id=>document.getElementById(id).classList.add('hidden')); closeCurrentAlertAction(false); }
 });
 
 // ===== INIT =====
