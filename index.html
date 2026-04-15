@@ -247,6 +247,29 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
 .flag-toggle input { display: none; }
 .flag-toggle-label { font-size: 12px; font-family: var(--font-mono); }
 
+
+/* ACTION ALERT MODAL */
+.alert-action-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.52); z-index: 12000; display: none; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(3px); }
+.alert-action-overlay.show { display: flex; }
+.alert-action-modal { width: min(520px, calc(100vw - 24px)); background: var(--bg2); color: var(--text); border: 1px solid var(--bg3); border-radius: 16px; box-shadow: 0 24px 80px rgba(0,0,0,.28); overflow: hidden; }
+.alert-action-head { padding: 16px 18px 10px; border-bottom: 1px solid var(--bg3); display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+.alert-action-title { font-size: 18px; font-weight: 700; line-height: 1.2; }
+.alert-action-sub { font-size: 12px; color: var(--text3); font-family: var(--font-mono); margin-top: 4px; }
+.alert-action-close { background: none; border: none; color: var(--text3); font-size: 22px; cursor: pointer; line-height: 1; }
+.alert-action-body { padding: 16px 18px; display:flex; flex-direction:column; gap:14px; }
+.alert-action-task { padding: 12px 14px; border: 1px solid var(--bg3); border-radius: 12px; background: var(--bg); }
+.alert-action-task-title { font-size: 15px; font-weight: 700; line-height: 1.35; margin-bottom: 6px; }
+.alert-action-task-meta { font-size: 12px; color: var(--text2); line-height: 1.5; }
+.alert-action-message { font-size: 14px; color: var(--text2); line-height: 1.55; }
+.alert-action-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.alert-action-controls select { flex:1; min-width:170px; }
+.alert-action-buttons { padding: 0 18px 18px; display:flex; gap:10px; flex-wrap:wrap; }
+.alert-action-buttons .btn { flex: 1 1 140px; justify-content: center; }
+@media (max-width: 640px) {
+  .alert-action-modal { width: 100%; border-radius: 14px; }
+  .alert-action-buttons .btn { flex-basis: 100%; }
+}
+
 /* TOAST */
 #toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 18px; border-radius: 10px; font-size: 14px; font-weight: 500; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 9999; border: 1px solid rgba(0,0,0,0.08); animation: slideIn 0.3s ease; display: none; max-width: 380px; }
 #toast.success { background: #15803D; color: #fff; }
@@ -546,6 +569,42 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
 
 <!-- TOAST -->
 <div id="toast"></div>
+
+
+<!-- ALERTA ACIONÁVEL -->
+<div class="alert-action-overlay" id="alert-action-overlay">
+  <div class="alert-action-modal" role="dialog" aria-modal="true" aria-labelledby="alert-action-title">
+    <div class="alert-action-head">
+      <div>
+        <div class="alert-action-title" id="alert-action-title">Alerta de prazo</div>
+        <div class="alert-action-sub" id="alert-action-sub">Tarefa próxima do vencimento</div>
+      </div>
+      <button class="alert-action-close" id="btn-alert-action-close" aria-label="Fechar">×</button>
+    </div>
+    <div class="alert-action-body">
+      <div class="alert-action-task">
+        <div class="alert-action-task-title" id="alert-task-title">—</div>
+        <div class="alert-action-task-meta" id="alert-task-meta">—</div>
+      </div>
+      <div class="alert-action-message" id="alert-task-message">—</div>
+      <div class="alert-action-controls">
+        <label class="lbl" for="alert-postpone-select" style="margin:0">Postergar por</label>
+        <select class="inp" id="alert-postpone-select">
+          <option value="15">15 minutos</option>
+          <option value="30">30 minutos</option>
+          <option value="60">1 hora</option>
+          <option value="180">3 horas</option>
+          <option value="1440">1 dia</option>
+        </select>
+      </div>
+    </div>
+    <div class="alert-action-buttons">
+      <button class="btn btn-green" id="btn-alert-finish">✅ Informar finalização</button>
+      <button class="btn btn-primary" id="btn-alert-postpone">⏳ Postergar</button>
+      <button class="btn btn-ghost" id="btn-alert-dismiss">Fechar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MOVE MENU (floated) -->
 <div class="move-menu" id="move-menu" style="display:none"></div>
@@ -1166,6 +1225,7 @@ function normalizeTask(t={}) {
     endTime: t.endTime || '',
     alertEnabled: t.alertEnabled !== false,
     alertOffset: Number.isFinite(Number(t.alertOffset)) ? Number(t.alertOffset) : 60,
+    alertSnoozeUntil: t.alertSnoozeUntil || '',
     assignees: Array.isArray(t.assignees) ? t.assignees : [],
     flags: Array.isArray(t.flags) ? t.flags : [],
     attachments: Array.isArray(t.attachments) ? t.attachments : [],
@@ -1173,8 +1233,12 @@ function normalizeTask(t={}) {
   };
 }
 function showToast(msg,type='success') {
-  const t=document.getElementById('toast'); t.textContent=msg; t.className=type; t.style.display='block';
-  setTimeout(()=>{t.style.display='none';},3200);
+  const t=document.getElementById('toast');
+  if (!t) return;
+  t.textContent=msg;
+  t.className=type;
+  t.style.display='block';
+  setTimeout(()=>{ if (t.textContent === msg) t.style.display='none'; },3200);
 }
 function getTaskDeadline(task) {
   if (!task || !task.endDate) return null;
@@ -1714,9 +1778,9 @@ async function saveTask() {
 
   if (editingTaskId) {
     const t=tasks.find(t=>t.id===editingTaskId);
-    if (t) { Object.assign(t,{ title:titleVal, description:document.getElementById('t-desc').value, status:document.getElementById('t-status').value, category:categoryVal, startDate:document.getElementById('t-start').value, endDate:document.getElementById('t-end').value, endTime:document.getElementById('t-end-time').value, alertEnabled:document.getElementById('t-alert-enabled').checked, alertOffset:Number(document.getElementById('t-alert-offset').value||60), assignees:[...activeAssignees], flags, checklist:[...currentChecklist], attachments:[...currentAttachments], notes:document.getElementById('t-notes').value, updatedAt:new Date().toISOString() }); }
+    if (t) { Object.assign(t,{ title:titleVal, description:document.getElementById('t-desc').value, status:document.getElementById('t-status').value, category:categoryVal, startDate:document.getElementById('t-start').value, endDate:document.getElementById('t-end').value, endTime:document.getElementById('t-end-time').value, alertEnabled:document.getElementById('t-alert-enabled').checked, alertOffset:Number(document.getElementById('t-alert-offset').value||60), alertSnoozeUntil:'', assignees:[...activeAssignees], flags, checklist:[...currentChecklist], attachments:[...currentAttachments], notes:document.getElementById('t-notes').value, updatedAt:new Date().toISOString() }); }
   } else {
-    tasks.unshift(normalizeTask({ id:genId(), title:titleVal, description:document.getElementById('t-desc').value, status:document.getElementById('t-status').value, category:categoryVal, startDate:document.getElementById('t-start').value, endDate:document.getElementById('t-end').value, endTime:document.getElementById('t-end-time').value, alertEnabled:document.getElementById('t-alert-enabled').checked, alertOffset:Number(document.getElementById('t-alert-offset').value||60), assignees:[...activeAssignees], flags, checklist:[...currentChecklist], attachments:[...currentAttachments], notes:document.getElementById('t-notes').value, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() }));
+    tasks.unshift(normalizeTask({ id:genId(), title:titleVal, description:document.getElementById('t-desc').value, status:document.getElementById('t-status').value, category:categoryVal, startDate:document.getElementById('t-start').value, endDate:document.getElementById('t-end').value, endTime:document.getElementById('t-end-time').value, alertEnabled:document.getElementById('t-alert-enabled').checked, alertOffset:Number(document.getElementById('t-alert-offset').value||60), alertSnoozeUntil:'', assignees:[...activeAssignees], flags, checklist:[...currentChecklist], attachments:[...currentAttachments], notes:document.getElementById('t-notes').value, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() }));
   }
   saveLocal(); renderAll();
   checkTaskAlerts();
@@ -1857,6 +1921,74 @@ document.getElementById('btn-add-category').onclick=()=>{
 };
 document.getElementById('new-category-input').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('btn-add-category').click(); });
 
+
+let alertActionQueue = [];
+let currentAlertAction = null;
+
+function formatDateTimeForAlert(task) {
+  if (!task?.endDate) return 'Sem prazo definido';
+  return task.endTime ? `${fmtDate(task.endDate)} às ${fmtTime(task.endTime)}` : fmtDate(task.endDate);
+}
+function buildAlertActionMessage(task, info, reason='upcoming') {
+  if (reason === 'overdue') {
+    return task.endTime
+      ? `Esta tarefa passou do prazo definido para ${fmtTime(task.endTime)}.`
+      : 'Esta tarefa está com o prazo vencido.';
+  }
+  if (reason === 'snooze') {
+    return `O prazo voltou a exigir atenção ${info?.diffMs != null && info.diffMs > 0 ? `(faltam ${formatRemaining(info.diffMs)})` : ''}.`;
+  }
+  return `O prazo está próximo${info?.diffMs != null ? ` (${formatRemaining(info.diffMs)})` : ''}.`;
+}
+function enqueueAlertAction(item) {
+  alertActionQueue.push(item);
+  if (!currentAlertAction) showNextAlertAction();
+}
+function showNextAlertAction() {
+  if (currentAlertAction || !alertActionQueue.length) return;
+  const item = alertActionQueue.shift();
+  currentAlertAction = item;
+  const overlay = document.getElementById('alert-action-overlay');
+  if (!overlay) return;
+  const task = item.task || {};
+  const info = getDeadlineInfo(task);
+  document.getElementById('alert-action-title').textContent = item.reason === 'overdue' ? 'Prazo vencido' : 'Alerta de prazo';
+  document.getElementById('alert-action-sub').textContent = item.reason === 'snooze' ? 'Lembrete reagendado' : (item.reason === 'overdue' ? 'Ação necessária' : 'Tarefa próxima do vencimento');
+  document.getElementById('alert-task-title').textContent = task.title || 'Tarefa';
+  const assignees = Array.isArray(task.assignees) && task.assignees.length ? ` • ${task.assignees.join(', ')}` : '';
+  document.getElementById('alert-task-meta').textContent = `Prazo: ${formatDateTimeForAlert(task)}${assignees}`;
+  document.getElementById('alert-task-message').textContent = item.message || buildAlertActionMessage(task, info, item.reason);
+  overlay.classList.add('show');
+}
+function closeCurrentAlertAction(showNext = true) {
+  const overlay = document.getElementById('alert-action-overlay');
+  if (overlay) overlay.classList.remove('show');
+  currentAlertAction = null;
+  if (showNext) setTimeout(showNextAlertAction, 120);
+}
+function postponeTaskFromAlert(taskId, minutes) {
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) { closeCurrentAlertAction(); return; }
+  const mins = Math.max(1, Number(minutes || 15));
+  task.alertSnoozeUntil = new Date(Date.now() + mins * 60000).toISOString();
+  task.updatedAt = new Date().toISOString();
+  saveLocal();
+  renderKanban();
+  showToast(`Alerta de "${task.title}" postergado por ${mins >= 60 ? formatRemaining(mins*60000) : mins + ' min'}.`, 'info');
+  closeCurrentAlertAction();
+}
+function finishTaskFromAlert(taskId) {
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) { closeCurrentAlertAction(); return; }
+  task.status = 'Concluídas';
+  task.alertSnoozeUntil = '';
+  task.updatedAt = new Date().toISOString();
+  saveLocal();
+  renderKanban();
+  showToast(`"${task.title}" marcada como concluída.`, 'success');
+  closeCurrentAlertAction();
+}
+
 function getAlertHistory() {
   if (!settings.alertHistory || typeof settings.alertHistory !== 'object') settings.alertHistory = {};
   return settings.alertHistory;
@@ -1884,29 +2016,69 @@ function checkTaskAlerts() {
   const history = getAlertHistory();
   const now = Date.now();
   const pending = [];
-  tasks.map(normalizeTask).forEach(task => {
+  tasks = tasks.map(normalizeTask);
+  tasks.forEach(task => {
     const info = getDeadlineInfo(task);
     if (!task.alertEnabled || !info.hasDeadline || info.isClosed) return;
+
+    if (task.alertSnoozeUntil) {
+      const snoozeTs = new Date(task.alertSnoozeUntil).getTime();
+      if (Number.isFinite(snoozeTs) && snoozeTs > now) return;
+      if (Number.isFinite(snoozeTs) && snoozeTs <= now) {
+        const snoozeKey = `${task.id}:snooze:${task.alertSnoozeUntil}`;
+        if (!history[snoozeKey]) {
+          pending.push({
+            key: snoozeKey,
+            reason: info.isOverdue ? 'overdue' : 'snooze',
+            task,
+            message: buildAlertActionMessage(task, info, 'snooze'),
+            toast: `⏰ ${task.title} voltou a exigir atenção.`,
+            browser: `${task.title} precisa de ação novamente.`
+          });
+        }
+      }
+      task.alertSnoozeUntil = '';
+    }
+
     const deadlineIso = info.deadline.toISOString();
     const diffMin = Math.ceil((info.deadline.getTime() - now) / 60000);
     const offset = Math.max(0, Number(task.alertOffset || 0));
+
     if (diffMin > 0 && diffMin <= offset) {
       const key = `${task.id}:before:${offset}:${deadlineIso}`;
       if (!history[key]) {
-        pending.push({ key, message: `⏰ ${task.title} vence ${task.endTime ? 'às ' + fmtTime(task.endTime) : 'hoje'} (${formatRemaining(info.diffMs)}).`, browser: `${task.title} vence em ${formatRemaining(info.diffMs)}.` });
+        pending.push({
+          key,
+          reason: 'upcoming',
+          task,
+          message: buildAlertActionMessage(task, info, 'upcoming'),
+          toast: `⏰ ${task.title} vence ${task.endTime ? 'às ' + fmtTime(task.endTime) : 'em breve'}.`,
+          browser: `${task.title} vence em ${formatRemaining(info.diffMs)}.`
+        });
       }
     }
     if (diffMin <= 0 && diffMin >= -30) {
       const key = `${task.id}:due:${deadlineIso}`;
       if (!history[key]) {
-        pending.push({ key, message: `🔴 ${task.title} está atrasada${task.endTime ? ' desde ' + fmtTime(task.endTime) : ''}.`, browser: `${task.title} está atrasada.` });
+        pending.push({
+          key,
+          reason: 'overdue',
+          task,
+          message: buildAlertActionMessage(task, info, 'overdue'),
+          toast: `🔴 ${task.title} está atrasada${task.endTime ? ' desde ' + fmtTime(task.endTime) : ''}.`,
+          browser: `${task.title} está atrasada.`
+        });
       }
     }
   });
   if (!pending.length) return;
+  saveLocal();
   pending.forEach((item, idx) => {
     rememberAlert(item.key);
-    setTimeout(() => showToast(item.message, item.message.includes('atrasada') ? 'warn' : 'info'), idx * 500);
+    setTimeout(() => {
+      showToast(item.toast || item.message, item.reason === 'overdue' ? 'warn' : 'info');
+      enqueueAlertAction(item);
+    }, idx * 450);
   });
   pushBrowserNotification('Planner UTD', pending[0].browser);
 }
