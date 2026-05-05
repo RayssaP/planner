@@ -317,10 +317,13 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
 
 
 
-/* COLLAPSIBLE KANBAN FOR TABLET/MOBILE */
-.col-header { cursor: default; }
+/* COLLAPSIBLE KANBAN - TODOS OS TAMANHOS DE TELA */
+.col-header {
+  cursor: pointer;
+  user-select: none;
+}
 .col-toggle {
-  display: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 24px;
@@ -331,30 +334,29 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
   transition: transform .22s ease, background .18s ease, color .18s ease;
   flex-shrink: 0;
 }
-.col-header:hover .col-toggle { background: var(--bg3); color: var(--text2); }
-.kanban-col.collapsed .col-toggle { transform: rotate(-90deg); }
-
-@media (max-width: 1024px) {
-  .col-header {
-    cursor: pointer;
-    user-select: none;
-  }
-  .col-toggle { display: inline-flex; }
-  .col-cards {
-    transform-origin: top center;
-    transition: max-height .28s ease, opacity .22s ease, transform .22s ease, padding .22s ease;
-  }
-  .kanban-col.collapsed {
-    min-height: 0;
-  }
-  .kanban-col.collapsed .col-cards {
-    max-height: 0 !important;
-    opacity: 0;
-    transform: scaleY(.96);
-    overflow: hidden;
-    padding-top: 0;
-    padding-bottom: 0;
-  }
+.col-header:hover .col-toggle {
+  background: var(--bg3);
+  color: var(--text2);
+}
+.kanban-col.collapsed {
+  min-height: 0;
+  height: auto;
+  align-self: flex-start;
+}
+.kanban-col.collapsed .col-toggle {
+  transform: rotate(-90deg);
+}
+.col-cards {
+  transform-origin: top center;
+  transition: max-height .28s ease, opacity .22s ease, transform .22s ease, padding .22s ease;
+}
+.kanban-col.collapsed .col-cards {
+  max-height: 0 !important;
+  opacity: 0;
+  transform: scaleY(.96);
+  overflow: hidden;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 /* ─── TABLET ≤ 1024px ─── */
@@ -936,8 +938,7 @@ let currentAttachments = [];
 let currentChecklist = [];
 let filterBarVisible = true;
 let autoSyncTimer = null;
-let collapsedKanbans = new Set();
-let compactKanbanInitialized = false;
+let collapsedKanbans = new Set(['Concluídas', 'Canceladas']);
 
 const LS_DATA     = 'planner-utd-appdata';
 const LS_SETTINGS = 'planner-utd-settings';
@@ -1478,31 +1479,21 @@ function updateFilterSelects() {
 }
 
 
-function isCompactKanbanView() {
-  return window.innerWidth <= 1024;
-}
-
-
 function syncCompactKanbanState() {
-  const compact = isCompactKanbanView();
-  if (compact && !compactKanbanInitialized) {
-    collapsedKanbans = new Set(STATUSES);
-    compactKanbanInitialized = true;
-  }
-  if (!compact) {
-    compactKanbanInitialized = false;
-    collapsedKanbans.clear();
-  }
+  // Mantida apenas para compatibilidade com o renderKanban.
+  // Agora os kanbans podem ser fechados em qualquer tamanho de tela.
 }
 
 function shouldCollapseStatus(status) {
-  return isCompactKanbanView() && collapsedKanbans.has(status);
+  return collapsedKanbans.has(status);
 }
 
 function toggleKanbanStatus(status) {
-  if (!isCompactKanbanView()) return;
-  if (collapsedKanbans.has(status)) collapsedKanbans.delete(status);
-  else collapsedKanbans.add(status);
+  if (collapsedKanbans.has(status)) {
+    collapsedKanbans.delete(status);
+  } else {
+    collapsedKanbans.add(status);
+  }
   renderKanban();
 }
 
