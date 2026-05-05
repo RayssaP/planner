@@ -618,6 +618,45 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
     padding: 10px 5px;
   }
 }
+
+/* DESKTOP: kanbans abertos ocupam toda a largura disponível */
+@media (min-width: 1025px) {
+  #board-wrap {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  #kanban {
+    width: 100%;
+    display: flex;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .kanban-col:not(.collapsed) {
+    flex: 1 1 0 !important;
+    min-width: 260px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  .kanban-col.collapsed {
+    flex: 0 0 58px !important;
+    width: 58px !important;
+    min-width: 58px !important;
+    max-width: 58px !important;
+  }
+
+  .kanban-col:not(.collapsed) .task-card-title {
+    font-size: 14px;
+  }
+
+  .kanban-col:not(.collapsed) .task-card-desc {
+    -webkit-line-clamp: 3;
+  }
+}
+
 </style>
 </head>
 <body>
