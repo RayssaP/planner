@@ -498,6 +498,126 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
   .modal-btns .btn { flex: 1 1 100%; justify-content: center; }
   #toast { left: 10px; right: 10px; bottom: 10px; text-align: center; }
 }
+
+
+/* RECOLHIMENTO EM LARGURA - sobrescreve o recolhimento vertical */
+.kanban-col {
+  transition: flex-basis .24s ease, width .24s ease, min-width .24s ease, max-width .24s ease, box-shadow .18s ease;
+  overflow: hidden;
+}
+
+.kanban-col.collapsed {
+  flex: 0 0 58px !important;
+  width: 58px !important;
+  min-width: 58px !important;
+  max-width: 58px !important;
+  align-self: stretch;
+}
+
+.kanban-col.collapsed .col-header {
+  height: 100%;
+  min-height: 240px;
+  padding: 10px 6px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  border-bottom: 0;
+  border-radius: 12px;
+}
+
+.kanban-col.collapsed .col-title {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: initial;
+  text-align: center;
+  flex: 0 0 auto;
+  max-width: none;
+  line-height: 1.1;
+}
+
+.kanban-col.collapsed .col-count,
+.kanban-col.collapsed .col-overdue {
+  writing-mode: horizontal-tb;
+  transform: none;
+  flex: 0 0 auto;
+}
+
+.kanban-col.collapsed .col-add {
+  display: none;
+}
+
+.kanban-col.collapsed .col-toggle {
+  transform: none;
+  background: var(--bg3);
+  color: var(--text2);
+}
+
+.kanban-col.collapsed .col-cards {
+  display: none !important;
+  max-height: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  padding: 0 !important;
+}
+
+@media (max-width: 1024px) {
+  #kanban {
+    display: flex !important;
+    grid-template-columns: none !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    align-items: stretch !important;
+  }
+
+  .kanban-col:not(.collapsed) {
+    flex: 0 0 280px !important;
+    width: 280px !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+  }
+
+  .kanban-col.collapsed {
+    flex: 0 0 58px !important;
+    width: 58px !important;
+    min-width: 58px !important;
+    max-width: 58px !important;
+  }
+
+  .kanban-col.collapsed .col-header {
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 640px) {
+  #kanban {
+    display: flex !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    padding: 8px 10px 14px;
+  }
+
+  .kanban-col:not(.collapsed) {
+    flex: 0 0 calc(100vw - 74px) !important;
+    width: calc(100vw - 74px) !important;
+    min-width: calc(100vw - 74px) !important;
+    max-width: calc(100vw - 74px) !important;
+  }
+
+  .kanban-col.collapsed {
+    flex: 0 0 54px !important;
+    width: 54px !important;
+    min-width: 54px !important;
+    max-width: 54px !important;
+  }
+
+  .kanban-col.collapsed .col-header {
+    min-height: 240px;
+    padding: 10px 5px;
+  }
+}
 </style>
 </head>
 <body>
@@ -938,7 +1058,18 @@ let currentAttachments = [];
 let currentChecklist = [];
 let filterBarVisible = true;
 let autoSyncTimer = null;
-let collapsedKanbans = new Set(['Concluídas', 'Canceladas']);
+const LS_COLLAPSED_KANBANS = 'planner-utd-collapsed-kanbans';
+function loadCollapsedKanbans() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_COLLAPSED_KANBANS) || 'null');
+    if (Array.isArray(saved)) return new Set(saved);
+  } catch {}
+  return new Set(['Concluídas', 'Canceladas']);
+}
+function saveCollapsedKanbans() {
+  localStorage.setItem(LS_COLLAPSED_KANBANS, JSON.stringify([...collapsedKanbans]));
+}
+let collapsedKanbans = loadCollapsedKanbans();
 
 const LS_DATA     = 'planner-utd-appdata';
 const LS_SETTINGS = 'planner-utd-settings';
@@ -1494,6 +1625,7 @@ function toggleKanbanStatus(status) {
   } else {
     collapsedKanbans.add(status);
   }
+  saveCollapsedKanbans();
   renderKanban();
 }
 
@@ -1515,7 +1647,7 @@ function renderKanban() {
         <span class="col-title" style="color:${STATUS_COLORS[status]}">${STATUS_ICONS[status]} ${escHtml(status)}</span>
         <span class="col-count">${colTasks.length}</span>
         ${overdueCount>0?`<span class="col-overdue">⚠️${overdueCount}</span>`:''}
-        <span class="col-toggle" aria-hidden="true">▾</span>
+        <span class="col-toggle" aria-hidden="true">${collapsed?'▸':'▾'}</span>
         <button class="col-add" data-add="${escHtml(status)}" title="Adicionar tarefa nesta coluna">+</button>
       </div>
       <div class="col-cards" id="col-${status.replace(/\s+/g,'_')}">
