@@ -657,6 +657,252 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
   }
 }
 
+
+
+/* =========================================================
+   AJUSTE MOBILE — BARRA INFERIOR COMPACTA
+   Drive e Configurações ficam no mesmo botão.
+   ========================================================= */
+@media (min-width: 641px) {
+  .mobile-action-dock #btn-settings {
+    display: none !important;
+  }
+
+  .mobile-action-dock .dock-icon {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  body, html {
+    overflow: auto;
+  }
+
+  body {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+
+  #header {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+    height: auto;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 0;
+    box-shadow: 0 1px 8px rgba(15, 23, 42, 0.08);
+  }
+
+  .header-left {
+    width: 100%;
+    justify-content: center;
+    gap: 8px;
+    padding: 0;
+  }
+
+  .logo {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+
+  .header-title {
+    font-size: 15px;
+    line-height: 1.1;
+  }
+
+  .header-sub,
+  #task-count {
+    display: none !important;
+  }
+
+  .mobile-action-dock {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    z-index: 950;
+    width: auto !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding: 7px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 12px 34px rgba(15, 23, 42, 0.22);
+  }
+
+  body.dark .mobile-action-dock {
+    background: rgba(15, 23, 42, 0.92);
+    border-color: rgba(51, 65, 85, 0.9);
+  }
+
+  .mobile-action-dock .dock-btn,
+  .mobile-action-dock .btn,
+  .mobile-action-dock .od-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px;
+    padding: 6px 4px !important;
+    border-radius: 13px;
+    justify-content: center;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+    line-height: 1.1;
+  }
+
+  .mobile-action-dock .dock-icon {
+    display: block;
+    font-size: 17px;
+    line-height: 1;
+  }
+
+  .mobile-action-dock .dock-label,
+  .mobile-action-dock .btn-label,
+  #od-btn-label {
+    display: block !important;
+    font-size: 10px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+  }
+
+  .mobile-action-dock .od-btn {
+    position: relative;
+  }
+
+  .mobile-action-dock .od-indicator {
+    position: absolute;
+    top: 7px;
+    right: 13px;
+    width: 7px;
+    height: 7px;
+  }
+
+  #btn-settings {
+    display: none !important;
+  }
+
+  .filter-bar {
+    position: sticky;
+    top: calc(48px + env(safe-area-inset-top));
+    z-index: 850;
+    margin: 8px 10px 0;
+    padding: 10px;
+    border-radius: 14px;
+    border: 1px solid var(--bg3);
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.10);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .filter-bar.collapsed {
+    display: none !important;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+
+  .filter-group .filter-inp,
+  .filter-group select,
+  .filter-inp-wide {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  .filter-label {
+    min-width: 70px;
+    font-size: 10px;
+  }
+
+  .filter-sep {
+    display: none;
+  }
+
+  #board-wrap {
+    overflow-y: visible;
+  }
+
+  #kanban {
+    display: flex !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    padding: 10px 10px 18px;
+    gap: 10px;
+    scroll-snap-type: x proximity;
+  }
+
+  .kanban-col:not(.collapsed) {
+    flex: 0 0 calc(100vw - 76px) !important;
+    width: calc(100vw - 76px) !important;
+    min-width: calc(100vw - 76px) !important;
+    max-width: calc(100vw - 76px) !important;
+    scroll-snap-align: start;
+  }
+
+  .kanban-col.collapsed {
+    flex: 0 0 52px !important;
+    width: 52px !important;
+    min-width: 52px !important;
+    max-width: 52px !important;
+  }
+
+  .kanban-col.collapsed .col-header {
+    min-height: 230px;
+    padding: 10px 5px;
+  }
+
+  .modal-overlay {
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+  }
+
+  .modal {
+    width: 100vw;
+    max-width: none;
+    min-width: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
+    padding: calc(14px + env(safe-area-inset-top)) 14px calc(80px + env(safe-area-inset-bottom));
+  }
+
+  .modal-btns {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 10px;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .modal-btns .btn {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  #toast {
+    left: 10px;
+    right: 10px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    text-align: center;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -670,15 +916,30 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
       <div class="header-sub" id="task-count">0 TAREFAS</div>
     </div>
   </div>
-  <div class="header-right">
-    <button class="od-btn" id="btn-drive" title="Google Drive">
+  <div class="header-right mobile-action-dock">
+    <button class="od-btn dock-btn" id="btn-drive" title="Configurações e Google Drive">
       <span class="od-indicator off" id="od-indicator"></span>
-      <span id="od-btn-label">Drive</span>
+      <span class="dock-icon">☁️</span>
+      <span id="od-btn-label" class="dock-label">Drive</span>
     </button>
-    <button class="btn btn-ghost" id="btn-toggle-filter">🔽 <span class="btn-label">Filtros</span></button>
-    <button class="btn btn-ghost" id="btn-export-pdf">🧾 <span class="btn-label">PDF</span></button>
-    <button class="btn btn-ghost" id="btn-settings">⚙️</button>
-    <button class="btn btn-primary" id="btn-new">+ Nova</button>
+
+    <button class="btn btn-ghost dock-btn" id="btn-toggle-filter" title="Filtros">
+      <span class="dock-icon">🔎</span>
+      <span class="btn-label dock-label">Filtros</span>
+    </button>
+
+    <button class="btn btn-ghost dock-btn" id="btn-export-pdf" title="Exportar PDF">
+      <span class="dock-icon">🧾</span>
+      <span class="btn-label dock-label">PDF</span>
+    </button>
+
+    <button class="btn btn-primary dock-btn" id="btn-new" title="Nova tarefa">
+      <span class="dock-icon">＋</span>
+      <span class="dock-label">Nova</span>
+    </button>
+
+    <!-- Mantido oculto para compatibilidade com rotinas antigas do JavaScript -->
+    <button class="btn btn-ghost" id="btn-settings" style="display:none" aria-hidden="true" tabindex="-1">⚙️</button>
   </div>
 </header>
 
@@ -1095,7 +1356,7 @@ let deleteTargetId = null;
 let activeAssignees = [];
 let currentAttachments = [];
 let currentChecklist = [];
-let filterBarVisible = true;
+let filterBarVisible = window.innerWidth > 640;
 let autoSyncTimer = null;
 const LS_COLLAPSED_KANBANS = 'planner-utd-collapsed-kanbans';
 function loadCollapsedKanbans() {
@@ -2283,8 +2544,15 @@ document.getElementById('btn-clear-filters').onclick=()=>{
 document.getElementById('btn-toggle-filter').onclick=()=>{
   filterBarVisible=!filterBarVisible;
   document.getElementById('filter-bar').classList.toggle('collapsed',!filterBarVisible);
-  document.getElementById('btn-toggle-filter').innerHTML=filterBarVisible?'🔽 <span class="btn-label">Filtros</span>':'🔼 <span class="btn-label">Filtros</span>';
+  document.getElementById('btn-toggle-filter').innerHTML='<span class="dock-icon">🔎</span><span class="btn-label dock-label">Filtros</span>';
 };
+
+
+// Em telas pequenas, inicia com filtros recolhidos para ampliar a área útil do Kanban.
+if (window.innerWidth <= 640) {
+  document.getElementById('filter-bar')?.classList.add('collapsed');
+  document.getElementById('btn-toggle-filter').innerHTML='<span class="dock-icon">🔎</span><span class="btn-label dock-label">Filtros</span>';
+}
 
 // Close modals on overlay click
 ['modal-task','modal-settings','modal-delete','modal-export-pdf'].forEach(id=>{
