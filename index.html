@@ -1040,7 +1040,24 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
     </div>
     <div class="modal-body">
       <div style="padding:12px 14px;background:var(--bg);border:1px solid var(--bg3);border-radius:10px;font-size:13px;color:var(--text2);line-height:1.6">
-        Selecione as atribuições desejadas. O PDF será gerado com todos os cards e suas informações, agrupados por atribuição.
+        Escolha como deseja organizar o PDF: por Kanban, por Atribuição ou por Urgência. Os filtros abaixo continuam valendo para limitar o que será impresso.
+      </div>
+      <div class="section-card">
+        <div class="section-head">ORGANIZAÇÃO DO PDF</div>
+        <div class="section-body" style="display:grid;grid-template-columns:1fr;gap:8px">
+          <label style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--bg3);border-radius:10px;background:var(--bg2);font-size:13px;color:var(--text2)">
+            <input type="radio" name="export-group-mode" class="export-group-mode" value="kanban" checked style="margin-top:2px"/>
+            <span><strong style="color:var(--text)">Por Kanban</strong><br><span style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">Agrupa por Backlog, A fazer, Fazendo, Aprovação, Concluídas e Canceladas.</span></span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--bg3);border-radius:10px;background:var(--bg2);font-size:13px;color:var(--text2)">
+            <input type="radio" name="export-group-mode" class="export-group-mode" value="assignee" style="margin-top:2px"/>
+            <span><strong style="color:var(--text)">Por Atribuição</strong><br><span style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">Agrupa por pessoa responsável e, dentro de cada pessoa, separa por Kanban.</span></span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--bg3);border-radius:10px;background:var(--bg2);font-size:13px;color:var(--text2)">
+            <input type="radio" name="export-group-mode" class="export-group-mode" value="urgency" style="margin-top:2px"/>
+            <span><strong style="color:var(--text)">Por Urgência</strong><br><span style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">Agrupa por flags: urgente, alta prioridade, bloqueado, em risco, revisão, destaque e sem urgência.</span></span>
+          </label>
+        </div>
       </div>
       <div class="section-card">
         <div class="section-head">FILTRAR POR ATRIBUIÇÃO</div>
@@ -1070,10 +1087,9 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
             <input type="checkbox" id="export-only-filtered"/>
             <span>Usar também os filtros visíveis da tela</span>
           </label>
-          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)">
-            <input type="checkbox" id="export-group-status" checked/>
-            <span>Agrupar cards por status dentro de cada atribuição</span>
-          </label>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--font-mono);line-height:1.6">
+            A organização principal será definida acima. Em “Por Atribuição”, o PDF também separa os cards por Kanban dentro de cada responsável.
+          </div>
         </div>
       </div>
     </div>
@@ -1763,8 +1779,15 @@ function applyFilters(list) {
 
 function getUniqueAssigneesFromTasks() {
   const set = new Set([...(appData.people||[])]);
-  tasks.forEach(t => (t.assignees||[]).forEach(a => a && set.add(a)));
-  return [...set].sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
+  let hasUnassigned = false;
+  tasks.forEach(t => {
+    const assignees = t.assignees || [];
+    if (!assignees.length) hasUnassigned = true;
+    assignees.forEach(a => a && set.add(a));
+  });
+  const list = [...set].sort((a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'}));
+  if (hasUnassigned) list.push('Sem atribuição');
+  return list;
 }
 
 function openExportModal() {
@@ -1791,35 +1814,98 @@ function formatFlagsText(flags=[]) {
   return flags.map(f => FLAG_META[f]?.icon?.replace(/<[^>]+>/g,'') || f).join(' · ');
 }
 
-function buildPrintableCards(tasksToUse, selectedAssignees, selectedStatuses, groupByStatus) {
-  const filteredTasks = tasksToUse.filter(t => selectedStatuses.includes(t.status));
-  const groups = selectedAssignees.map(name => ({
-    name,
-    tasks: filteredTasks.filter(t => (t.assignees||[]).includes(name))
-  })).filter(g => g.tasks.length);
+function getSelectedExportGroupMode() {
+  const checked = document.querySelector('input[name="export-group-mode"]:checked');
+  return checked ? checked.value : 'kanban';
+}
 
-  const sections = groups.map(group => {
-    if (groupByStatus) {
-      return `
+function getUrgencyGroups() {
+  return [
+    { key:'urgente', label:'🔴 Urgente' },
+    { key:'alta', label:'🟠 Alta prioridade' },
+    { key:'bloqueado', label:'⚫ Bloqueado' },
+    { key:'risco', label:'⚠️ Em risco' },
+    { key:'revisao', label:'👁️ Revisão' },
+    { key:'destaque', label:'⭐ Destaque' },
+    { key:'sem_flag', label:'Sem urgência/flag' }
+  ];
+}
+
+function sortTasksForPdf(list) {
+  const statusOrder = Object.fromEntries(STATUSES.map((s,i)=>[s,i]));
+  return list.slice().sort((a,b) => {
+    const sa = statusOrder[a.status] ?? 99;
+    const sb = statusOrder[b.status] ?? 99;
+    if (sa !== sb) return sa - sb;
+    const da = a.endDate || '9999-12-31';
+    const db = b.endDate || '9999-12-31';
+    if (da !== db) return da.localeCompare(db);
+    return (a.title||'').localeCompare(b.title||'', 'pt-BR', {sensitivity:'base'});
+  });
+}
+
+function pdfStatusBlock(status, sts) {
+  if (!sts.length) return '';
+  return `
+    <div class="pdf-status-block">
+      <h2>${escHtml(status)} <span>${sts.length}</span></h2>
+      <div class="pdf-cards">${sortTasksForPdf(sts).map(t => printableCardHtml(t)).join('')}</div>
+    </div>`;
+}
+
+function buildPrintableCards(tasksToUse, selectedAssignees, selectedStatuses, groupMode) {
+  const selectedAssigneeSet = new Set(selectedAssignees);
+  const filteredTasks = tasksToUse.filter(t => {
+    if (!selectedStatuses.includes(t.status)) return false;
+    const assignees = t.assignees || [];
+    if (!selectedAssignees.length) return false;
+    if (!assignees.length) return selectedAssigneeSet.has('Sem atribuição');
+    return assignees.some(a => selectedAssigneeSet.has(a));
+  });
+
+  let sections = '';
+  let subtitle = 'Exportação por Kanban';
+
+  if (groupMode === 'assignee') {
+    subtitle = 'Exportação por atribuição';
+    const groups = selectedAssignees.map(name => ({
+      name,
+      tasks: filteredTasks.filter(t => {
+        const assignees = t.assignees || [];
+        return name === 'Sem atribuição' ? !assignees.length : assignees.includes(name);
+      })
+    })).filter(g => g.tasks.length);
+
+    sections = groups.map(group => `
       <section class="pdf-group">
         <h1>${escHtml(group.name)}</h1>
-        ${selectedStatuses.map(status => {
-          const sts = group.tasks.filter(t => t.status === status);
-          if (!sts.length) return '';
-          return `
-            <div class="pdf-status-block">
-              <h2>${escHtml(status)} <span>${sts.length}</span></h2>
-              <div class="pdf-cards">${sts.map(t => printableCardHtml(t)).join('')}</div>
-            </div>`;
-        }).join('')}
-      </section>`;
-    }
-    return `
-    <section class="pdf-group">
-      <h1>${escHtml(group.name)}</h1>
-      <div class="pdf-cards">${group.tasks.map(t => printableCardHtml(t)).join('')}</div>
-    </section>`;
-  }).join('');
+        ${selectedStatuses.map(status => pdfStatusBlock(status, group.tasks.filter(t => t.status === status))).join('')}
+      </section>`).join('');
+  } else if (groupMode === 'urgency') {
+    subtitle = 'Exportação por urgência';
+    sections = getUrgencyGroups().map(group => {
+      const groupTasks = group.key === 'sem_flag'
+        ? filteredTasks.filter(t => !(t.flags||[]).length)
+        : filteredTasks.filter(t => (t.flags||[]).includes(group.key));
+      if (!groupTasks.length) return '';
+      return `
+        <section class="pdf-group">
+          <h1>${escHtml(group.label)} <span class="pdf-count">${groupTasks.length}</span></h1>
+          <div class="pdf-cards">${sortTasksForPdf(groupTasks).map(t => printableCardHtml(t)).join('')}</div>
+        </section>`;
+    }).join('');
+  } else {
+    subtitle = 'Exportação por Kanban';
+    sections = selectedStatuses.map(status => {
+      const sts = filteredTasks.filter(t => t.status === status);
+      if (!sts.length) return '';
+      return `
+        <section class="pdf-group">
+          <h1>${escHtml(status)} <span class="pdf-count">${sts.length}</span></h1>
+          <div class="pdf-cards">${sortTasksForPdf(sts).map(t => printableCardHtml(t)).join('')}</div>
+        </section>`;
+    }).join('');
+  }
 
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Planner UTD - Exportação PDF</title>
   <style>
@@ -1827,13 +1913,14 @@ function buildPrintableCards(tasksToUse, selectedAssignees, selectedStatuses, gr
     .pdf-top{margin-bottom:24px; border-bottom:2px solid #e2e8f0; padding-bottom:12px}
     .pdf-top h1{margin:0 0 6px; font-size:24px}
     .pdf-top p{margin:2px 0; color:#475569; font-size:12px}
-    .pdf-group{margin:0 0 24px}
+    .pdf-group{margin:0 0 24px; break-inside:auto}
     .pdf-group>h1{font-size:20px; margin:0 0 14px; padding:10px 14px; background:#f8fafc; border-left:6px solid #f59e0b}
+    .pdf-count{font-size:12px; color:#64748b; font-weight:400}
     .pdf-status-block{margin:0 0 18px}
     .pdf-status-block h2{font-size:15px; margin:0 0 10px; color:#334155; border-bottom:1px solid #e2e8f0; padding-bottom:4px}
     .pdf-status-block h2 span{font-size:12px; color:#64748b}
     .pdf-cards{display:flex; flex-direction:column; gap:12px}
-    .pdf-card{border:1px solid #cbd5e1; border-radius:12px; padding:14px; page-break-inside:avoid}
+    .pdf-card{border:1px solid #cbd5e1; border-radius:12px; padding:14px; page-break-inside:avoid; break-inside:avoid}
     .pdf-card h3{margin:0 0 8px; font-size:16px}
     .pdf-line{margin:4px 0; font-size:12px; color:#334155}
     .pdf-muted{color:#64748b}
@@ -1846,7 +1933,7 @@ function buildPrintableCards(tasksToUse, selectedAssignees, selectedStatuses, gr
   </style></head><body>
   <div class="pdf-top">
     <h1>Planner UTD</h1>
-    <p>Exportação por atribuição</p>
+    <p>${escHtml(subtitle)}</p>
     <p>Gerado em ${escHtml(new Date().toLocaleString('pt-BR'))}</p>
   </div>
   ${sections || '<p>Nenhum card encontrado para os filtros selecionados.</p>'}
@@ -1880,7 +1967,7 @@ function exportTasksToPdf() {
   if (!selectedAssignees.length) { showToast('Selecione ao menos uma atribuição para exportar.','info'); return; }
   if (!selectedStatuses.length) { showToast('Selecione ao menos um kanban para imprimir.','info'); return; }
   const tasksToUse = document.getElementById('export-only-filtered').checked ? applyFilters(tasks) : tasks.slice();
-  const html = buildPrintableCards(tasksToUse, selectedAssignees, selectedStatuses, document.getElementById('export-group-status').checked);
+  const html = buildPrintableCards(tasksToUse, selectedAssignees, selectedStatuses, getSelectedExportGroupMode());
   const w = window.open('', '_blank');
   if (!w) { showToast('Seu navegador bloqueou a janela do PDF. Permita pop-ups para este site.','info'); return; }
   w.document.open();
