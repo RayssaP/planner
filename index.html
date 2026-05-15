@@ -903,6 +903,59 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
   }
 }
 
+
+
+/* AJUSTE DE ROLAGEM DO MODAL DE EXPORTAÇÃO PDF */
+#modal-export-pdf .modal {
+  height: min(820px, calc(100dvh - 28px));
+  max-height: calc(100dvh - 28px);
+}
+#modal-export-pdf .modal-body {
+  min-height: 0;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-right: 8px;
+  padding-bottom: 18px;
+}
+#modal-export-pdf .modal-btns {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: var(--bg2);
+  border-top: 1px solid var(--bg3);
+  margin: 0 -2px;
+  padding: 12px 2px 0;
+}
+#modal-export-pdf .export-group-mode-list {
+  overflow: visible;
+}
+#modal-export-pdf .export-mode-card {
+  cursor: pointer;
+}
+#modal-export-pdf .export-mode-card:has(input:checked) {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, .16);
+}
+@media (max-width: 640px) {
+  #modal-export-pdf .modal {
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+  #modal-export-pdf .modal-body {
+    padding-right: 4px;
+    padding-bottom: 96px;
+  }
+  #modal-export-pdf .export-mode-card {
+    padding: 9px 10px !important;
+  }
+  #modal-export-pdf .export-mode-card span span {
+    font-size: 10px !important;
+    line-height: 1.35;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1044,16 +1097,16 @@ body.dark .file-picker-btn, body.dark .attach-item, body.dark .check-item { back
       </div>
       <div class="section-card">
         <div class="section-head">ORGANIZAÇÃO DO PDF</div>
-        <div class="section-body" style="display:grid;grid-template-columns:1fr;gap:8px">
-          <label style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--bg3);border-radius:10px;background:var(--bg2);font-size:13px;color:var(--text2)">
+        <div class="section-body export-group-mode-list" style="display:grid;grid-template-columns:1fr;gap:8px">
+          <label class="export-mode-card" style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--bg3);border-radius:10px;background:var(--bg2);font-size:13px;color:var(--text2)">
             <input type="radio" name="export-group-mode" class="export-group-mode" value="kanban" checked style="margin-top:2px"/>
             <span><strong style="color:var(--text)">Por Kanban</strong><br><span style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">Agrupa por Backlog, A fazer, Fazendo, Aprovação, Concluídas e Canceladas.</span></span>
           </label>
-          <label style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--bg3);border-radius:10px;background:var(--bg2);font-size:13px;color:var(--text2)">
+          <label class="export-mode-card" style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--bg3);border-radius:10px;background:var(--bg2);font-size:13px;color:var(--text2)">
             <input type="radio" name="export-group-mode" class="export-group-mode" value="assignee" style="margin-top:2px"/>
             <span><strong style="color:var(--text)">Por Atribuição</strong><br><span style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">Agrupa por pessoa responsável e, dentro de cada pessoa, separa por Kanban.</span></span>
           </label>
-          <label style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--bg3);border-radius:10px;background:var(--bg2);font-size:13px;color:var(--text2)">
+          <label class="export-mode-card" style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--bg3);border-radius:10px;background:var(--bg2);font-size:13px;color:var(--text2)">
             <input type="radio" name="export-group-mode" class="export-group-mode" value="urgency" style="margin-top:2px"/>
             <span><strong style="color:var(--text)">Por Urgência</strong><br><span style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">Agrupa por flags: urgente, alta prioridade, bloqueado, em risco, revisão, destaque e sem urgência.</span></span>
           </label>
